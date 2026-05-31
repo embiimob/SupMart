@@ -57,6 +57,11 @@
     .tab{padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);font-size:13px;font-weight:500;margin-bottom:-1px;transition:color .15s,border-color .15s}
     .tab.active{color:var(--text);border-bottom-color:var(--acc)}
     .tab:hover{color:var(--text)}
+    .browse-menu{display:none;gap:8px;align-items:center;flex-wrap:wrap;margin:-8px 0 18px}
+    .browse-menu.visible{display:flex}
+    .browse-menu select{width:auto;min-width:130px;padding:7px 10px}
+    .check-wrap{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;background:var(--surface)}
+    .check-wrap input{width:auto}
 
     /* ── SECTION ── */
     .sec-title{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
@@ -74,6 +79,7 @@
     .obj-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
     .obj-qty{font-size:11px;color:var(--muted)}
     .creator-chip{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}
+    .quick-buy-btn{padding:4px 8px;font-size:11px}
 
     /* ── MODALS ── */
     .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:20px}
@@ -140,6 +146,7 @@
              onkeydown="if(event.key==='Enter')searchObjectsAtProfile()" />
     </div>
     <div class="nav-right">
+      <button class="btn" onclick="homeSearch()">Home</button>
       <button class="btn btn-acc" onclick="openModal('createModal')">Create</button>
       <button class="btn" onclick="openModal('tradeModal')">Trade</button>
       <button class="btn" id="walletBtn" onclick="openModal('walletModal')">Connect Wallet</button>
@@ -176,6 +183,22 @@
       <div class="tab active" id="tabCreated" onclick="switchTab('created')">Created</div>
       <div class="tab" id="tabOwned" onclick="switchTab('owned')">Owned</div>
     </div>
+  </div>
+  <div class="browse-menu" id="browseMenu">
+    <button class="btn" onclick="homeSearch()">Home</button>
+    <select id="sortSelect" onchange="applyBrowseFiltersAndRender()">
+      <option value="default">Sort: Default</option>
+      <option value="name">Sort: Name (A-Z)</option>
+      <option value="units">Sort: Units (High-Low)</option>
+      <option value="lowest">Sort: Lowest Listing</option>
+    </select>
+    <select id="categorySelect" onchange="applyBrowseFiltersAndRender()">
+      <option value="all">Category: All</option>
+    </select>
+    <label class="check-wrap">
+      <input id="listedOnly" type="checkbox" onchange="applyBrowseFiltersAndRender()" />
+      <span>Listed only</span>
+    </label>
   </div>
 
   <!-- Object grid -->
@@ -295,6 +318,7 @@
           <div class="detail-row">Creator: <span class="mono" id="detailCreator">—</span></div>
           <div class="detail-row">Units: <span id="detailUnits">0</span></div>
           <div class="detail-row" id="detailListingRow" style="display:none">Listing: <span id="detailListingText"></span></div>
+          <div class="detail-row" id="detailPendingRow" style="display:none">Pending: <span id="detailPendingText"></span></div>
           <div class="detail-row" id="detailDesc">—</div>
         </div>
       </div>
@@ -342,7 +366,7 @@ const CHANGE_PREFIX='sup:testnet3:change:';
 const SAFE_DELIMITERS=['\\','/',':','*','?','"','<','>','|'];
 const IPFS_GATEWAYS=['https://nftstorage.link/ipfs/','https://ipfs.io/ipfs/'];
 
-const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[],selectedObject:null};
+const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[],selectedObject:null,walletProfile:null};
 const $=(id)=>document.getElementById(id);
 const norm=(x)=>String(x??'').trim();
 const utf8len=(t)=>new TextEncoder().encode(String(t??'')).length;
@@ -375,11 +399,14 @@ function setWalletSummary(){
 }
 
 let _tabState={created:[],owned:[]};
+let _activeTab='created';
+let _visibleObjects=[];
 
 function switchTab(tab){
+  _activeTab=tab;
   $('tabCreated').classList.toggle('active',tab==='created');
   $('tabOwned').classList.toggle('active',tab==='owned');
-  renderObjectCards(_tabState[tab]||[]);
+  applyBrowseFiltersAndRender();
 }
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -434,17 +461,36 @@ async function fetchJsonFromAny(url){
   return null;
 }
 
-function detectListing(obj){
+function extractListings(obj){
   const listingSrc=obj.listings||obj.listing||obj.lst||obj.Listings||obj.Listing||null;
-  if(!listingSrc)return null;
+  if(!listingSrc)return [];
   const entries=Array.isArray(listingSrc)?listingSrc:(typeof listingSrc==='object'?Object.values(listingSrc):[]);
+  const out=[];
   for(const e of entries){
     if(!e||typeof e!=='object')continue;
     const seller=norm(e.seller||e.address||e.owner||e.Owner||'');
     const each=toNumberLike(e.each??e.price??e.Price??e.amount);
-    if(each>0)return{seller,each};
+    const qty=Math.max(0,toNumberLike(e.qty??e.quantity??e.units??e.amountAvailable??e.available));
+    if(each>0)out.push({seller,each,qty:qty||0});
   }
-  return null;
+  return out.sort((a,b)=>a.each-b.each);
+}
+
+function detectListing(obj){
+  const list=extractListings(obj);
+  return list.length?list[0]:null;
+}
+
+function ownerUnitsForAddress(owners,address){
+  const a=norm(address);
+  if(!a||!owners||typeof owners!=='object')return 0;
+  if(Array.isArray(owners)){
+    return owners.reduce((s,o)=>{
+      if(o&&typeof o==='object'&&norm(o.address||o.owner||o.Owner)===a)return s+toNumberLike(o);
+      return s;
+    },0);
+  }
+  return toNumberLike(owners[a]??owners[a.toLowerCase()]??owners[a.toUpperCase()]??0);
 }
 
 async function resolveObjectImage(obj){
@@ -464,9 +510,78 @@ async function resolveObjectImage(obj){
   return normalizeIpfsRef(obj.urn)||'';
 }
 
+function imageGatewayCandidates(url){
+  const u=norm(url);
+  if(!u)return [];
+  const normalized=normalizeIpfsRef(u)||u;
+  if(!(normalized.startsWith('https://')&&normalized.includes('/ipfs/')))return[normalized];
+  const cid=normalized.split('/ipfs/')[1];
+  return uniq([normalized,...IPFS_GATEWAYS.map(g=>`${g}${cid}`)]);
+}
+
+function renderImageTag(url,fallback='&#9698;'){
+  const cands=imageGatewayCandidates(url);
+  if(!cands.length)return fallback;
+  return `<img src="${esc(cands[0])}" data-fallbacks="${esc(cands.join('|'))}" data-fidx="0" loading="lazy" onerror="rotateImageFallback(this)" />`;
+}
+
+function rotateImageFallback(img){
+  const list=String(img.dataset.fallbacks||'').split('|').filter(Boolean);
+  const next=Number(img.dataset.fidx||0)+1;
+  if(next<list.length){
+    img.dataset.fidx=String(next);
+    img.src=list[next];
+    return;
+  }
+  img.parentElement.innerHTML='&#9698;';
+}
+
+function categoryOfObject(o){
+  const atr=o.attributes&&typeof o.attributes==='object'?o.attributes:{};
+  const raw=norm(atr.category||atr.Category||atr.type||atr.Type||atr.genre||atr.kind||'');
+  return raw?raw.toLowerCase():'uncategorized';
+}
+
+function homeSearch(){
+  if(!norm($('searchProfile').value)){
+    const fallback=norm(S.profile?.URN||S.walletProfile?.urn||S.profile?.Address||S.addr||'');
+    if(fallback)$('searchProfile').value=S.profile?.URN?`@${fallback}`:fallback;
+  }
+  searchObjectsAtProfile();
+}
+
+function populateCategoryFilter(list){
+  const select=$('categorySelect');
+  const vals=uniq((list||[]).map(categoryOfObject)).sort((a,b)=>a.localeCompare(b));
+  select.innerHTML=['<option value="all">Category: All</option>',...vals.map(v=>`<option value="${esc(v)}">Category: ${esc(v)}</option>`)].join('');
+}
+
+function applyBrowseFiltersAndRender(){
+  const base=[...(_tabState[_activeTab]||[])];
+  const listedOnly=$('listedOnly')?.checked;
+  const category=norm($('categorySelect')?.value||'all');
+  const sort=norm($('sortSelect')?.value||'default');
+  let list=base.filter(o=>{
+    if(listedOnly&&!detectListing(o))return false;
+    if(category!=='all'&&categoryOfObject(o)!==category)return false;
+    return true;
+  });
+  if(sort==='name')list.sort((a,b)=>norm(a.name).localeCompare(norm(b.name)));
+  else if(sort==='units')list.sort((a,b)=>sumOwnerUnits(b.owners)-sumOwnerUnits(a.owners));
+  else if(sort==='lowest'){
+    list.sort((a,b)=>{
+      const la=detectListing(a)?.each??Number.POSITIVE_INFINITY;
+      const lb=detectListing(b)?.each??Number.POSITIVE_INFINITY;
+      return la-lb;
+    });
+  }
+  renderObjectCards(list);
+}
+
 function renderObjectCards(list){
   const grid=$('objectsGrid');
   const empty=$('emptyState');
+  _visibleObjects=list||[];
   if(!list||!list.length){
     grid.innerHTML='';
     empty.style.display='';
@@ -474,14 +589,14 @@ function renderObjectCards(list){
     return;
   }
   empty.style.display='none';
-  grid.innerHTML=list.map(o=>{
+  grid.innerHTML=list.map((o,idx)=>{
     const qty=sumOwnerUnits(o.owners);
     const creator=(o.creators||[])[0]||'';
     const creatorShort=creator?creator.slice(0,8)+'\u2026'+creator.slice(-4):'';
-    const thumb=o.img
-      ?`<img src="${esc(o.img)}" loading="lazy" onerror="this.parentElement.innerHTML='&#9698;'" />`
-      :'&#9698;';
-    return `<div class="obj-card" data-address="${esc(o.address||'')}">
+    const listing=detectListing(o);
+    const thumb=renderImageTag(o.img);
+    const buyBtn=listing?`<button class="btn btn-acc quick-buy-btn" data-quick-buy="1" data-index="${idx}">Buy ${Number(listing.each).toFixed(8)} BTC</button>`:'';
+    return `<div class="obj-card" data-index="${idx}" data-address="${esc(o.address||'')}">
       <div class="obj-thumb">${thumb}</div>
       <div class="obj-body">
         <div class="obj-name">${esc(o.name)||'Untitled'}</div>
@@ -489,6 +604,7 @@ function renderObjectCards(list){
         ${creatorShort?`<div class="creator-chip mono">by ${esc(creatorShort)}</div>`:''}
         <div class="obj-footer">
           <span class="obj-qty">${qty} unit${qty!==1?'s':''}</span>
+          ${buyBtn}
         </div>
       </div>
     </div>`;
@@ -514,7 +630,10 @@ function openObjectDetail(o){
   $('detailQty').value=1;
   $('detailStatus').className='status';
   $('detailStatus').textContent='Select an action to prepare and broadcast from this object.';
-  $('detailMedia').innerHTML=o.img?`<img src="${esc(o.img)}" loading="lazy" onerror="this.parentElement.innerHTML='&#9698;'" />`:'◢';
+  $('detailMedia').innerHTML=renderImageTag(o.img,'◢');
+  $('detailPendingRow').style.display='';
+  $('detailPendingText').textContent='Checking mempool…';
+  refreshPendingSummary(o.address).catch(()=>{});
   $('opObject').value=o.address||'';
   $('objAddress').value=o.address||'';
   openModal('detailModal');
@@ -534,6 +653,7 @@ async function executeDetailTrade(type){
       primary,
       qty,
       each,
+      objectAddress:type==='BUY'?norm(S.selectedObject.address):'',
       extraAddress:recipient,
       royaltiesOverride:type==='BUY'?JSON.stringify(S.selectedObject.royalties||{}):'',
       statusId:'detailStatus'
@@ -547,10 +667,118 @@ async function executeDetailTrade(type){
 $('objectsGrid').addEventListener('click',e=>{
   const card=e.target.closest('.obj-card');
   if(!card)return;
+  const buyBtn=e.target.closest('[data-quick-buy="1"]');
+  if(buyBtn){
+    e.stopPropagation();
+    const idx=Number(buyBtn.dataset.index||card.dataset.index||-1);
+    if(Number.isInteger(idx)&&idx>=0&&_visibleObjects[idx])quickBuyFromCard(_visibleObjects[idx]);
+    return;
+  }
+  const idx=Number(card.dataset.index||-1);
   const addr=card.dataset.address||'';
-  const found=S.objects.find(x=>x.address===addr)||null;
+  const found=(Number.isInteger(idx)&&idx>=0&&_visibleObjects[idx])?_visibleObjects[idx]:(S.objects.find(x=>x.address===addr)||null);
   if(found)openObjectDetail(found);
 });
+
+async function fetchObjectVerbose(address){
+  if(!norm(address))throw new Error('Object address required');
+  const raw=await fetchJson(`/GetObjectByAddress/${encodeURIComponent(address)}?mainnet=false&verbose=true`);
+  return asObj(Array.isArray(raw)?raw[0]:raw);
+}
+
+async function validateFreshListing(objectAddress,seller,each,qty){
+  const verboseObj=await fetchObjectVerbose(objectAddress);
+  const listings=extractListings(verboseObj);
+  if(!listings.length)throw new Error('Listing no longer exists on-chain');
+  const picked=seller?listings.find(x=>norm(x.seller)===norm(seller)):listings[0];
+  if(!picked)throw new Error('Requested seller is no longer listed');
+  if(each>0&&Math.abs(Number(picked.each)-Number(each))>1e-12){
+    throw new Error(`Listing changed: expected ${each}, now ${picked.each} BTC`);
+  }
+  const sellerUnits=ownerUnitsForAddress(verboseObj.owners,picked.seller);
+  if(sellerUnits<qty)throw new Error(`Listing quantity not available (seller has ${sellerUnits})`);
+  return{object:verboseObj,listing:picked};
+}
+
+function classifyPendingTx(tx){
+  const outs=Array.isArray(tx?.vout)?tx.vout:[];
+  const dustCount=outs.filter(v=>Number(v?.value)===DUST).length;
+  if(dustCount>=2)return'state-engine-like';
+  return'other';
+}
+
+async function refreshPendingSummary(address){
+  const addr=norm(address);
+  if(!addr){$('detailPendingRow').style.display='none';return;}
+  try{
+    const r=await fetch(`${MEMPOOL_API}/address/${encodeURIComponent(addr)}/txs/mempool`);
+    if(!r.ok)throw new Error(`${r.status}`);
+    const txs=await r.json();
+    if(!Array.isArray(txs)||!txs.length){
+      $('detailPendingText').textContent='No pending transactions.';
+      return;
+    }
+    const buckets=txs.reduce((m,tx)=>{const k=classifyPendingTx(tx);m[k]=(m[k]||0)+1;return m;},{});
+    const parts=[`${txs.length} total`];
+    if(buckets['state-engine-like'])parts.push(`${buckets['state-engine-like']} state-engine-like`);
+    if(buckets.other)parts.push(`${buckets.other} other`);
+    $('detailPendingText').textContent=parts.join(' · ');
+  }catch{
+    $('detailPendingText').textContent='Pending check unavailable.';
+  }
+}
+
+async function quickBuyFromCard(obj){
+  try{
+    if(!S.priv)throw new Error('Unlock wallet first');
+    const listing=detectListing(obj);
+    if(!listing)throw new Error('No active listing found');
+    const fresh=await validateFreshListing(obj.address,listing.seller,listing.each,1);
+    await sendOperationTx({
+      type:'BUY',
+      primary:fresh.listing.seller,
+      qty:1,
+      each:fresh.listing.each,
+      objectAddress:obj.address,
+      royaltiesOverride:JSON.stringify(obj.royalties||{}),
+      statusId:'opStatus'
+    });
+    showToast(`Quick-buy prepared at ${fresh.listing.each} BTC`,'ok');
+  }catch(e){
+    showToast(String(e.message||e),'err');
+  }
+}
+
+async function resolveProfileForAddress(address){
+  const addr=norm(address);
+  if(!addr)return null;
+  const raw=await fetchJson(`/GetProfileByAddress/${encodeURIComponent(addr)}?mainnet=false`).catch(()=>null);
+  const p=Array.isArray(raw)?raw[0]:raw;
+  if(!p||typeof p!=='object')return null;
+  const pAddr=norm(p.Address||p.address||p.Creator||p.creator||'');
+  const urn=norm(p.URN||p.urn||'');
+  const bio=norm(p.Bio||p.bio||'');
+  return{address:pAddr,urn,bio,isAuthentic:!!pAddr&&pAddr===addr};
+}
+
+async function refreshWalletIdentity(){
+  if(!S.addr){setStatus('walletInfo','No key loaded.');return;}
+  const kr=S.keyring;
+  const lines=[`Unlocked ✓`,`Main: <span class='mono'>${S.addr}</span>`];
+  if(kr){
+    lines.push(`Change-1: <span class='mono'>${kr.changes[0].addr}</span>`);
+    lines.push(`Change-2: <span class='mono'>${kr.changes[1].addr}</span>`);
+  }
+  try{
+    const profile=await resolveProfileForAddress(S.addr);
+    S.walletProfile=profile;
+    if(profile?.urn)lines.push(`Profile: @${esc(profile.urn)} ${profile.isAuthentic?'✓ authentic':'⚠ not verified'}`);
+    else lines.push('Profile: none found');
+  }catch{
+    lines.push('Profile: lookup failed');
+  }
+  setStatus('walletInfo',lines.join('<br>'),'ok');
+}
 
 // ── Crypto / blockchain (unchanged) ─────────────────────────────
 
@@ -625,7 +853,7 @@ async function importWallet(){
     localStorage.setItem(WALLET_KEY,JSON.stringify(await encryptPriv(priv,pass)));
     S.priv=priv;S.addr=addr;S.keyring=keyring;
     setWalletSummary();
-    setStatus('walletInfo',`Unlocked ✓<br>Main: <span class='mono'>${addr}</span><br>Change-1: <span class='mono'>${keyring.changes[0].addr}</span><br>Change-2: <span class='mono'>${keyring.changes[1].addr}</span>`,'ok');
+    await refreshWalletIdentity();
     showToast('Wallet unlocked ✓','ok');
   }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
 }
@@ -635,11 +863,11 @@ async function unlockWallet(){
     const pass=norm($('walletPass').value);if(!pass)throw new Error('Enter password');
     const priv=await decryptPriv(JSON.parse(saved),pass);const addr=await priv2addr(priv);const keyring=await buildKeyring(priv);
     S.priv=priv;S.addr=addr;S.keyring=keyring;setWalletSummary();
-    setStatus('walletInfo',`Unlocked ✓<br>Main: <span class='mono'>${addr}</span><br>Change-1: <span class='mono'>${keyring.changes[0].addr}</span><br>Change-2: <span class='mono'>${keyring.changes[1].addr}</span>`,'ok');
+    await refreshWalletIdentity();
     showToast('Wallet unlocked ✓','ok');
   }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
 }
-function lockWallet(){S.priv=null;S.addr='';S.keyring=null;setWalletSummary();setStatus('walletInfo','Wallet locked.');}
+function lockWallet(){S.priv=null;S.addr='';S.keyring=null;S.walletProfile=null;setWalletSummary();setStatus('walletInfo','Wallet locked.');}
 function forgetWallet(){lockWallet();localStorage.removeItem(WALLET_KEY);setStatus('walletInfo','Saved key removed.');}
 
 // ── OBJ tx ───────────────────────────────────────────────────────
@@ -673,6 +901,7 @@ async function sendOperationTx(opts={}){
     const statusId=opts.statusId||'opStatus';
     const type=opts.type||$('opType').value;
     const primary=norm(opts.primary??$('opObject').value);
+    const objectAddress=norm(opts.objectAddress||'');
     const qty=Math.max(1,Number((opts.qty??$('opQty').value) || 1));
     const each=Math.max(0,Number((opts.each??$('opEach').value) || 0));
     if(!primary)throw new Error('Primary address is required');
@@ -683,8 +912,17 @@ async function sendOperationTx(opts={}){
     }else if(type==='LST'){
       payload=[[primary,String(qty),String(each)],['0',String(randSalt())]];extras.push(primary);
     }else if(type==='BUY'){
-      payload=[[primary,String(qty)],['0',String(randSalt())]];
-      const total=qty*each;if(total<=0)throw new Error('BUY requires qty and each > 0');
+      let buySeller=primary;
+      let buyEach=each;
+      if(objectAddress){
+        setStatus(statusId,'Validating listing state with verbose object lookup…');
+        const fresh=await validateFreshListing(objectAddress,primary,each,qty);
+        buySeller=fresh.listing.seller;
+        buyEach=fresh.listing.each;
+      }
+      if(!buySeller)throw new Error('Seller is required for BUY');
+      const total=qty*buyEach;if(total<=0)throw new Error('BUY requires qty and each > 0');
+      payload=[[buySeller,String(qty)],['0',String(randSalt())]];
       const roy=parseJsonInput(opts.royaltiesOverride??$('opRoyOverride').value,{});
       let royaltyTotal=0;
       for(const[addr,rawRate]of Object.entries(roy||{})){
@@ -695,7 +933,7 @@ async function sendOperationTx(opts={}){
         if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}
       }
       const sellerAmount=total-royaltyTotal;
-      payments.push({addr:primary,amount:sellerAmount});
+      payments.push({addr:buySeller,amount:sellerAmount});
     }else if(type==='BRN'){
       payload=[['0',String(qty)],['0',String(randSalt())]];extras.push(primary);
     }else throw new Error('Unsupported op');
@@ -726,8 +964,9 @@ function asObj(raw){
   const creators=Array.isArray(creatorRaw)?creatorRaw.filter(Boolean):Object.keys(creatorRaw||{}).filter(Boolean);
   const owners=parseMaybe(o.Owners||o.own||o.Owner||o.owner||{});
   const royalties=parseMaybe(o.Royalties||o.roy||{});
+  const attributes=parseMaybe(o.Attributes||o.attributes||o.atr||{});
   const listing=o.Listings||o.listings||o.lst||o.Listing||o.listing||null;
-  return{address,name,urn,img,uri,description,creators,owners,royalties,listing};
+  return{address,name,urn,img,uri,description,creators,owners,royalties,attributes,listing};
 }
 
 function mergeObjectRecords(a,b){
@@ -735,6 +974,7 @@ function mergeObjectRecords(a,b){
   merged.creators=uniq([...(a.creators||[]),...(b.creators||[])]);
   merged.owners={...(a.owners||{}),...(b.owners||{})};
   merged.royalties={...(a.royalties||{}),...(b.royalties||{})};
+  merged.attributes={...(a.attributes||{}),...(b.attributes||{})};
   merged.listing=b.listing||a.listing||null;
   merged.img=b.img||a.img||'';
   merged.description=b.description||a.description||'';
@@ -760,6 +1000,7 @@ async function searchObjectsAtProfile(){
     const addr=norm(profile?.Address||profile?.address||profile?.Creators?.[0]||profile?.cre?.[0]||'');
     const urn=norm(profile?.URN||profile?.urn||'');
     const bio=norm(profile?.Bio||profile?.bio||'');
+    if(!addr)throw new Error('Profile has no usable address');
 
     $('profileHandle').textContent=urn?`@${urn}`:addr.slice(0,18)+'\u2026';
     $('profileAddr').textContent=addr||'unknown';
@@ -767,6 +1008,7 @@ async function searchObjectsAtProfile(){
     $('profileBio').style.display=bio?'':'none';
     $('profileSection').classList.add('visible');
     $('tabsRow').style.display='';
+    $('browseMenu').classList.add('visible');
 
     const[created,owned]=await Promise.all([
       fetchJson(`/GetObjectsCreatedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[]),
@@ -783,17 +1025,19 @@ async function searchObjectsAtProfile(){
 
     S.profile=profile;S.objects=allList;
     _tabState={created:createdList,owned:ownedList};
+    populateCategoryFilter(allList);
 
-    const totalUnits=allList.reduce((s,o)=>s+sumOwnerUnits(o.owners),0);
-    $('statObjects').textContent=allList.length;
+    const totalUnits=allList.reduce((s,o)=>s+ownerUnitsForAddress(o.owners,addr),0);
+    const objectCount=allList.filter(o=>ownerUnitsForAddress(o.owners,addr)>0).length;
+    $('statObjects').textContent=objectCount;
     $('statUnits').textContent=totalUnits;
     $('gridTitle').textContent='Objects';
 
-    $('tabCreated').classList.add('active');
-    $('tabOwned').classList.remove('active');
+    _activeTab='created';
     switchTab('created');
   }catch(e){
     showToast(String(e.message||e),'err');
+    $('browseMenu').classList.remove('visible');
     renderObjectCards([]);
   }
 }
