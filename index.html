@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SupMart</title>
+  <style>
+    :root{--bg:#0b1020;--card:#111a32;--muted:#9fb0de;--text:#edf2ff;--acc:#5eead4;--bad:#fca5a5;--ok:#86efac}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#070b16,#101833);color:var(--text)}
+    .wrap{max-width:1180px;margin:0 auto;padding:20px} .top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    .brand{font-size:1.25rem;font-weight:800} .sub{color:var(--muted);font-size:.92rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:14px}
+    .card{background:var(--card);border:1px solid #25345f;border-radius:14px;padding:14px}
+    h2,h3{margin:0 0 10px} h2{font-size:1.05rem} h3{font-size:.95rem;color:#c9d7ff}
+    label{display:block;font-size:.82rem;color:var(--muted);margin:8px 0 4px}
+    input,textarea,select,button{font:inherit} input,textarea,select{width:100%;background:#0a1328;color:var(--text);border:1px solid #2f4277;border-radius:10px;padding:8px 10px}
+    textarea{min-height:70px;resize:vertical} button{cursor:pointer;border:0;border-radius:10px;padding:8px 12px;background:#334c8d;color:#fff;font-weight:650}
+    button:hover{filter:brightness(1.08)} button.acc{background:#0f766e} button.warn{background:#7f1d1d}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+    .status{margin-top:8px;padding:8px 10px;border-radius:10px;border:1px solid #355293;background:#0b1a3d}.status.ok{border-color:#236045;background:#102f1f}.status.err{border-color:#7f1d1d;background:#351515}
+    table{width:100%;border-collapse:collapse;font-size:.86rem} th,td{padding:6px;border-bottom:1px solid #2a3965;text-align:left;vertical-align:top}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#0b244f;font-size:.75rem;margin-right:6px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="brand">SupMart</div>
+        <div class="sub">Single-file testnet3 marketplace (OBJ / GIV / LST / BUY / BRN)</div>
+      </div>
+      <div class="sub mono" id="walletSummary">Wallet: locked</div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Built-in Wallet (testnet3)</h2>
+        <div class="sub">Compatible constants: <span class="mono">sup_iw_v1 · sup:testnet3:change: · 2 change keys</span></div>
+        <label>WIF private key (testnet3)</label><input id="wifInput" type="password" placeholder="c... or 9..." />
+        <label>Password (for local encryption, min 12)</label><input id="walletPass" type="password" />
+        <div class="actions">
+          <button class="acc" onclick="importWallet()">Import + unlock</button>
+          <button onclick="unlockWallet()">Unlock saved</button>
+          <button onclick="lockWallet()">Lock</button>
+          <button class="warn" onclick="forgetWallet()">Forget saved key</button>
+        </div>
+        <div id="walletInfo" class="status">No key loaded.</div>
+      </section>
+
+      <section class="card">
+        <h2>Profile / Objects Search</h2>
+        <label>Profile query (@urn or testnet address)</label><input id="searchProfile" placeholder="@handle or m/n..." />
+        <div class="actions"><button onclick="searchObjectsAtProfile()">Search</button></div>
+        <div id="profileCard" class="status">No profile loaded.</div>
+        <div id="reportCard" class="status">No report yet.</div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>OBJ (Create / Edit)</h2>
+        <label>Object address</label><input id="objAddress" placeholder="testnet3 object address" />
+        <div class="row">
+          <div><label>Name</label><input id="objName" /></div>
+          <div><label>URN</label><input id="objUrn" placeholder="IPFS:... or txid/file" /></div>
+        </div>
+        <div class="row">
+          <div><label>Image URL</label><input id="objImg" /></div>
+          <div><label>URI</label><input id="objUri" /></div>
+        </div>
+        <label>Description</label><textarea id="objDesc"></textarea>
+        <div class="row">
+          <div><label>Creators JSON array</label><textarea id="objCreators" placeholder='["creatorAddress"]'></textarea></div>
+          <div><label>Owners JSON map</label><textarea id="objOwners" placeholder='{"ownerAddress":1}'></textarea></div>
+        </div>
+        <div class="row">
+          <div><label>Royalties JSON map</label><textarea id="objRoys" placeholder='{"royaltyAddress":0.05}'></textarea></div>
+          <div><label>Attributes JSON map</label><textarea id="objAttrs" placeholder='{"type":"collectible"}'></textarea></div>
+        </div>
+        <div class="actions"><button onclick="sendObjTx()">Broadcast OBJ</button></div>
+        <div id="objStatus" class="status">Ready.</div>
+      </section>
+
+      <section class="card">
+        <h2>GIV / LST / BUY / BRN</h2>
+        <label>Operation</label>
+        <select id="opType" onchange="renderOpHints()">
+          <option value="GIV">GIV</option>
+          <option value="LST">LST</option>
+          <option value="BUY">BUY</option>
+          <option value="BRN">BRN</option>
+        </select>
+        <label>Primary object address (or seller for BUY)</label><input id="opObject" placeholder="object address or seller address" />
+        <div class="row">
+          <div><label>Qty</label><input id="opQty" type="number" min="1" value="1" /></div>
+          <div><label>Each BTC (used by LST/BUY)</label><input id="opEach" type="number" min="0" step="0.00000001" value="0.00000546" /></div>
+        </div>
+        <label>Extra address (GIV target, optional)</label><input id="opExtraAddress" placeholder="recipient for GIV" />
+        <label>Royalties JSON map for BUY (optional override)</label><textarea id="opRoyOverride" placeholder='{"royaltyAddress":0.05}'></textarea>
+        <div class="actions"><button onclick="sendOperationTx()">Broadcast operation</button></div>
+        <div id="opHints" class="status">GIV: sends object quantity to a target outside a sale.</div>
+        <div id="opStatus" class="status">Ready.</div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:14px;">
+      <h2>Objects</h2>
+      <table>
+        <thead><tr><th>Address</th><th>Name/URN</th><th>Creators</th><th>Owners</th><th>Royalties</th></tr></thead>
+        <tbody id="objectsTable"><tr><td colspan="5" class="sub">Search a profile to view objects.</td></tr></tbody>
+      </table>
+    </section>
+  </div>
+
+<script>
+const B58='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const API_PRIMARY='https://p2fl.io';
+const API_FALLBACK='https://p2fk.io';
+const MEMPOOL_API='https://mempool.space/testnet/api';
+const P2FK_VER=0x6f;
+const P2FK_CHUNK=20;
+const P2FK_PAD='#';
+const DUST=546;
+const FEE_DEFAULT=10;
+const FEE_MIN=2;
+
+const WALLET_KEY='sup_iw_v1';
+const WALLET_MIN_PASS=12;
+const WALLET_PBKDF2=600000;
+const CHANGE_COUNT=2;
+const CHANGE_PREFIX='sup:testnet3:change:';
+const DELIMITERS=['\\','/',':','*','?','"','<','>','|'];
+
+const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[]};
+const $=(id)=>document.getElementById(id);
+const norm=(x)=>String(x??'').trim();
+const utf8len=(t)=>new TextEncoder().encode(String(t??'')).length;
+const uniq=(arr)=>Array.from(new Set(arr.filter(Boolean)));
+
+function setStatus(id,msg,type=''){const el=$(id); if(!el) return; el.className=`status ${type}`; el.innerHTML=msg;}
+function setWalletSummary(){ $('walletSummary').textContent=S.priv?`Wallet: ${S.addr}`:'Wallet: locked'; }
+
+async function fetchJson(path){
+  const urls=[`${API_PRIMARY}${path}`,`${API_FALLBACK}${path}`];
+  let lastErr='';
+  for(const u of urls){
+    try{const r=await fetch(u); if(!r.ok) throw new Error(`${r.status}`); return await r.json();}
+    catch(e){lastErr=String(e.message||e);}
+  }
+  throw new Error(`API request failed (${lastErr})`);
+}
+
+function b2bi(b){let v=0n;for(const x of b)v=(v<<8n)|BigInt(x);return v;}
+function bi2b32(n){const o=new Uint8Array(32);for(let i=31;i>=0;i--){o[i]=Number(n&0xffn);n>>=8n;}return o;}
+function b2h(b){return Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');}
+function h2b(h){const o=new Uint8Array(h.length/2);for(let i=0;i<o.length;i++)o[i]=parseInt(h.slice(i*2,i*2+2),16);return o;}
+async function sha256(b){return new Uint8Array(await crypto.subtle.digest('SHA-256',b));}
+async function sha256hex(t){return b2h(await sha256(new TextEncoder().encode(t)));}
+function encVI(n){if(n<0xfd)return new Uint8Array([n]);if(n<=0xffff)return new Uint8Array([0xfd,n&0xff,(n>>8)&0xff]);return new Uint8Array([0xfe,n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>>24)&0xff]);}
+async function msgHash(text){const magic=new TextEncoder().encode('Bitcoin Signed Message:\n');const msg=new TextEncoder().encode(text);const ml=encVI(msg.length);const env=new Uint8Array(1+magic.length+ml.length+msg.length);env[0]=magic.length;env.set(magic,1);env.set(ml,1+magic.length);env.set(msg,1+magic.length+ml.length);return sha256(await sha256(env));}
+function encB58(b){if(!(b instanceof Uint8Array))b=new Uint8Array(b);let z=0;while(z<b.length&&b[z]===0)z++;let v=0n;for(const x of b)v=(v<<8n)+BigInt(x);let s='';while(v>0n){const r=Number(v%58n);v/=58n;s=B58[r]+s;}return B58[0].repeat(z)+(s||(z?'':B58[0]));}
+async function encB58C(b){const p=b instanceof Uint8Array?b:new Uint8Array(b);const h=await sha256(await sha256(p));const o=new Uint8Array(p.length+4);o.set(p);o.set(h.slice(0,4),p.length);return encB58(o);}
+function decB58(s){let n=0n;for(const c of s){const i=B58.indexOf(c);if(i<0)throw new Error('Invalid B58');n=n*58n+BigInt(i);}let z=0;for(const c of s){if(c!==B58[0])break;z++;}const o=[];while(n>0n){o.unshift(Number(n&0xffn));n>>=8n;}return new Uint8Array([...new Array(z).fill(0),...o]);}
+async function decB58C(s){const r=decB58(s);if(r.length<5)throw new Error('B58C too short');const p=r.slice(0,-4),c=r.slice(-4);const h=await sha256(await sha256(p));for(let i=0;i<4;i++)if(c[i]!==h[i])throw new Error('Invalid checksum');return p;}
+
+const P=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
+const N=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const Gx=0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n;
+const Gy=0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n;
+const sP=n=>((n%P)+P)%P, sN=n=>((n%N)+N)%N;
+function sInv(a,m){let[r,s,rr,ss]=[m,0n,((a%m)+m)%m,1n];while(rr!==0n){const q=r/rr;[r,s,rr,ss]=[rr,ss,r-q*rr,s-q*ss];}return((s%m)+m)%m;}
+function jDbl(X,Y,Z){if(Y===0n)return[0n,1n,0n];const Y2=sP(Y*Y),S=sP(4n*X*Y2),M=sP(3n*X*X),X2=sP(M*M-2n*S);return[X2,sP(M*(S-X2)-8n*Y2*Y2),sP(2n*Y*Z)];}
+function jAdd(X1,Y1,Z1,X2,Y2,Z2){if(Z1===0n)return[X2,Y2,Z2];if(Z2===0n)return[X1,Y1,Z1];const z1s=sP(Z1*Z1),z2s=sP(Z2*Z2),U1=sP(X1*z2s),U2=sP(X2*z1s),S1=sP(Y1*z2s*Z2),S2=sP(Y2*z1s*Z1),H=sP(U2-U1),R=sP(S2-S1);if(H===0n)return R===0n?jDbl(X1,Y1,Z1):[0n,1n,0n];const Hs=sP(H*H),Hc=sP(H*Hs),X3=sP(R*R-Hc-2n*U1*Hs);return[X3,sP(R*(U1*Hs-X3)-S1*Hc),sP(H*Z1*Z2)];}
+function jAff(X,Y,Z){const zi=sInv(Z,P),zi2=sP(zi*zi);return[sP(X*zi2),sP(Y*sP(zi2*zi))];}
+function sMul(k){let[rx,ry,rz]=[0n,1n,0n],[ax,ay,az]=[Gx,Gy,1n],sc=((k%N)+N)%N;while(sc>0n){if(sc&1n)[rx,ry,rz]=jAdd(rx,ry,rz,ax,ay,az);[ax,ay,az]=jDbl(ax,ay,az);sc>>=1n;}return[rx,ry,rz];}
+function priv2pub(pb){const[jx,jy,jz]=sMul(b2bi(pb));const[x,y]=jAff(jx,jy,jz);return new Uint8Array([(y&1n)?0x03:0x02,...bi2b32(x)]);}
+async function rfc6979k(priv,mh){const hmac=async(key,...parts)=>{const k=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:'SHA-256'},false,['sign']);const sz=parts.reduce((s,p)=>s+p.length,0),m=new Uint8Array(sz);let o=0;for(const p of parts){m.set(p,o);o+=p.length;}return new Uint8Array(await crypto.subtle.sign('HMAC',k,m));};let V=new Uint8Array(32).fill(1),K=new Uint8Array(32).fill(0);K=await hmac(K,V,new Uint8Array([0]),priv,mh);V=await hmac(K,V);K=await hmac(K,V,new Uint8Array([1]),priv,mh);V=await hmac(K,V);for(;;){V=await hmac(K,V);const k=b2bi(V);if(k>=1n&&k<N)return k;K=await hmac(K,V,new Uint8Array([0]));V=await hmac(K,V);}}
+async function ecSign(priv,mhb){const d=b2bi(priv),z=b2bi(mhb),k=await rfc6979k(priv,mhb);const[rx,ry]=jAff(...sMul(k));const r=sN(rx);let s=sN(sInv(k,N)*(z+r*d));let rid=Number(ry&1n)|(rx>=N?2:0);if(s>N/2n){s=N-s;rid^=1;}return{r,s,recoveryId:rid};}
+function derEnc(r,s){const mb=n=>{const b=[];let t=n;while(t>0n){b.unshift(Number(t&0xffn));t>>=8n;}if(!b.length)b.push(0);if(b[0]&0x80)b.unshift(0);return b;};const rb=mb(r),sb=mb(s);return new Uint8Array([0x30,rb.length+sb.length+4,0x02,rb.length,...rb,0x02,sb.length,...sb]);}
+function ripemd160(data){const bytes=data instanceof Uint8Array?data:new TextEncoder().encode(data);const rl32=(x,n)=>(x<<n)|(x>>>(32-n));const ff=(j,x,y,z)=>j<16?x^y^z:j<32?(x&y)|(~x&z):j<48?(x|~y)^z:j<64?(x&z)|(y&~z):x^(y|~z);const KL=[0,0x5A827999,0x6ED9EBA1,0x8F1BBCDC,0xA953FD4E],KR=[0x50A28BE6,0x5C4DD124,0x6D703EF3,0x7A6D76E9,0],RL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2,4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13],RR=[5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14,12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11],SL=[11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12,9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6],SR=[8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8,8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11];const ml=bytes.length,pl=ml%64<56?56-(ml%64):120-(ml%64);const pd=new Uint8Array(ml+pl+8);pd.set(bytes);pd[ml]=0x80;const bl=ml*8;for(let i=0;i<4;i++)pd[ml+pl+i]=(bl>>>(i*8))&0xff;const view=new DataView(pd.buffer);let h0=0x67452301,h1=0xEFCDAB89,h2=0x98BADCFE,h3=0x10325476,h4=0xC3D2E1F0;for(let off=0;off<pd.length;off+=64){const X=Array.from({length:16},(_,i)=>view.getUint32(off+i*4,true));let al=h0,bl_=h1,cl=h2,dl=h3,el=h4,ar=h0,br=h1,cr=h2,dr=h3,er=h4;for(let j=0;j<80;j++){const qi=j>>4;let t=(rl32((al+ff(j,bl_,cl,dl)+X[RL[j]]+KL[qi])|0,SL[j])+el)|0;al=el;el=dl;dl=rl32(cl,10);cl=bl_;bl_=t;t=(rl32((ar+ff(79-j,br,cr,dr)+X[RR[j]]+KR[qi])|0,SR[j])+er)|0;ar=er;er=dr;dr=rl32(cr,10);cr=br;br=t;}const t=(h1+cl+dr)|0;h1=(h2+dl+er)|0;h2=(h3+el+ar)|0;h3=(h4+al+br)|0;h4=(h0+bl_+cr)|0;h0=t;}const out=new Uint8Array(20),dv=new DataView(out.buffer);[h0,h1,h2,h3,h4].forEach((v,i)=>dv.setUint32(i*4,v,true));return out;}
+async function wif2priv(wif){const p=await decB58C(norm(wif));if(p[0]!==0xef)throw new Error('Only testnet3 WIF supported');if(p.length===34)return p.slice(1,33);if(p.length===33)return p.slice(1);throw new Error('Unexpected WIF length');}
+async function priv2addr(pb){const pub=priv2pub(pb),h=ripemd160(await sha256(pub));return encB58C(new Uint8Array([P2FK_VER,...h]));}
+async function encryptPriv(pb,pass){const salt=crypto.getRandomValues(new Uint8Array(32)),iv=crypto.getRandomValues(new Uint8Array(12));const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:WALLET_PBKDF2,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt']);const enc=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,pb);return{salt:Array.from(salt),iv:Array.from(iv),data:Array.from(new Uint8Array(enc))};}
+async function decryptPriv(stored,pass){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:new Uint8Array(stored.salt),iterations:WALLET_PBKDF2,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(stored.iv)},k,new Uint8Array(stored.data)));}
+async function deriveChangeKey(base,label){const seedPfx=new TextEncoder().encode(`${CHANGE_PREFIX}${norm(label)}:`);const bsc=b2bi(base);const ctr=new Uint8Array(4);for(let c=0;c<=0xffffffff;c++){ctr[0]=(c>>>24)&0xff;ctr[1]=(c>>>16)&0xff;ctr[2]=(c>>>8)&0xff;ctr[3]=c&0xff;const seed=new Uint8Array(seedPfx.length+base.length+4);seed.set(seedPfx);seed.set(base,seedPfx.length);seed.set(ctr,seedPfx.length+base.length);const tw=sN(b2bi(await sha256(seed)));if(tw===0n)continue;const d=sN(bsc+tw);if(d===0n)continue;return bi2b32(d);}throw new Error('Could not derive change key');}
+function buildP2PKH(h160){return new Uint8Array([0x76,0xa9,0x14,...h160,0x88,0xac]);}
+async function addrPayout(addr){const p=await decB58C(norm(addr));if(p.length!==21||p[0]!==0x6f)throw new Error(`Not a testnet3 legacy address: ${addr}`);return buildP2PKH(p.slice(1));}
+async function buildSignerEntry(pb,lbl){const pub=priv2pub(pb),h=ripemd160(await sha256(pub)),a=await encB58C(new Uint8Array([P2FK_VER,...h]));return{label:lbl,pb,pub,script:buildP2PKH(h),addr:a};}
+async function buildKeyring(base){const main=await buildSignerEntry(base,'main');const changes=[];for(let i=0;i<CHANGE_COUNT;i++){const d=await deriveChangeKey(base,`slot-${i+1}`);changes.push(await buildSignerEntry(d,`change-${i+1}`));}return{main,changes,all:[main,...changes]};}
+
+function serializeTx(inputs,outputs,sigIdx=-1,sigScript=null){const u32=v=>[v&0xff,(v>>8)&0xff,(v>>16)&0xff,(v>>>24)&0xff];const u64=v=>{const n=BigInt(Math.round(v));return[...u32(Number(n&0xffffffffn)),...u32(Number((n>>32n)&0xffffffffn))];};const vi=n=>n<0xfd?[n]:n<=0xffff?[0xfd,n&0xff,(n>>8)&0xff]:[0xfe,n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>>24)&0xff];const out=[...u32(1),...vi(inputs.length)];for(let i=0;i<inputs.length;i++){out.push(...Array.from(h2b(inputs[i].txid)).reverse(),...u32(inputs[i].vout));const sc=sigIdx>=0?(i===sigIdx?sigScript:new Uint8Array([])):inputs[i].scriptSig||new Uint8Array([]);out.push(...vi(sc.length),...sc,...u32(0xffffffff));}out.push(...vi(outputs.length));for(const o of outputs)out.push(...u64(o.sat),...vi(o.script.length),...o.script);out.push(...u32(0));return new Uint8Array(out);}
+async function buildTx(utxos,outputs){const inputs=utxos.map(u=>({txid:u.txid,vout:u.vout,signer:u.signer,scriptSig:new Uint8Array([])}));const finalOuts=await Promise.all(outputs.map(async o=>({sat:o.sat,script:await addrPayout(o.addr)})));for(let i=0;i<inputs.length;i++){const sg=inputs[i].signer;const pre=new Uint8Array([...serializeTx(inputs,finalOuts,i,sg.script),1,0,0,0]);const sh=await sha256(await sha256(pre));const{r,s}=await ecSign(sg.pb,sh);const der=derEnc(r,s);inputs[i].scriptSig=new Uint8Array([der.length+1,...der,0x01,sg.pub.length,...sg.pub]);}return b2h(serializeTx(inputs,finalOuts));}
+async function broadcastTx(outputs){if(!S.priv)throw new Error('Wallet is locked');const kr=S.keyring||await buildKeyring(S.priv);if(!S.keyring)S.keyring=kr;const[cA,cB]=kr.changes;const utxoGroups=await Promise.all(kr.all.map(async sg=>{const r=await fetch(`${MEMPOOL_API}/address/${encodeURIComponent(sg.addr)}/utxo`);if(!r.ok)throw new Error(`UTXO fetch failed for ${sg.label}`);const j=await r.json();return j.filter(u=>u.status?.confirmed).map(u=>({...u,srcAddr:sg.addr,signer:sg}));}));const allUtxos=utxoGroups.flat();if(!allUtxos.length)throw new Error('No confirmed UTXOs found');let feeRate=FEE_DEFAULT;try{const fr=await fetch(`${MEMPOOL_API}/v1/fees/recommended`);const fp=await fr.json();feeRate=Math.max(Number(fp?.halfHourFee||FEE_DEFAULT),FEE_MIN);}catch{}const estFee=(ic,oc)=>Math.ceil((10+148*ic+34*oc)*feeRate);const outSats=outputs.map(o=>({addr:o.addr,sat:Math.round(o.amount*1e8)}));const totalOut=outSats.reduce((s,o)=>s+o.sat,0);const totByAddr=kr.all.reduce((m,sg)=>m.set(sg.addr,0),new Map());allUtxos.forEach(u=>totByAddr.set(u.srcAddr,(totByAddr.get(u.srcAddr)||0)+Number(u.value||0)));const candidates=[kr.main,cA,cB].sort((a,b)=>(totByAddr.get(b.addr)||0)-(totByAddr.get(a.addr)||0));let sel=null,selUtxos=[],selTotal=0;for(const src of candidates){const pool=allUtxos.filter(u=>u.srcAddr===src.addr).sort((a,b)=>b.value-a.value);let lo=[],lt=0;for(const u of pool){lo.push(u);lt+=u.value;if(lt>=totalOut+estFee(lo.length,outSats.length+1)){sel=src;selUtxos=lo;selTotal=lt;break;}}if(selUtxos.length)break;}if(!selUtxos.length){const mixPool=[...allUtxos].sort((a,b)=>b.value-a.value);let lo=[],lt=0;for(const u of mixPool){lo.push(u);lt+=u.value;if(lt>=totalOut+estFee(lo.length,outSats.length+1)){selUtxos=lo;selTotal=lt;break;}}}if(!selUtxos.length)throw new Error('Insufficient funds across main + change addresses');const fee=estFee(selUtxos.length,outSats.length+1);const change=selTotal-totalOut-fee;if(change<0)throw new Error('Insufficient balance after fee');let changeAddr=cA.addr;if(sel){if(sel.addr===cA.addr)changeAddr=cB.addr;else if(sel.addr===cB.addr)changeAddr=cA.addr;else changeAddr=S.lastChangeOutputAddr===cA.addr?cB.addr:cA.addr;}else{changeAddr=S.lastChangeOutputAddr===cA.addr?cB.addr:cA.addr;}S.lastChangeOutputAddr=changeAddr;const finalOuts=[...outSats];if(change>=DUST)finalOuts.push({addr:changeAddr,sat:change});const rawHex=await buildTx(selUtxos,finalOuts);const res=await fetch(`${MEMPOOL_API}/tx`,{method:'POST',headers:{'Content-Type':'text/plain'},body:rawHex});if(!res.ok)throw new Error(`Broadcast failed: ${await res.text()}`);return(await res.text()).trim();}
+
+function randDelim(){const b=new Uint8Array(1),lim=Math.floor(256/DELIMITERS.length)*DELIMITERS.length;let v=0;do{crypto.getRandomValues(b);v=b[0];}while(v>=lim);return DELIMITERS[v%DELIMITERS.length];}
+function randSalt(){const b=new Uint32Array(1);crypto.getRandomValues(b);return-(b[0]%100000);}
+async function signMsg(text){if(!S.priv)throw new Error('Wallet locked');const mh=await msgHash(text);const{r,s,recoveryId}=await ecSign(S.priv,mh);const c=new Uint8Array(65);c[0]=27+4+recoveryId;c.set(bi2b32(r),1);c.set(bi2b32(s),33);return btoa(String.fromCharCode.apply(null,c));}
+async function deriveKeywordAddress(keyword){const tok=norm(keyword).replace(/^#/,'');const b=new TextEncoder().encode(tok);const p=new Uint8Array(21);p[0]=P2FK_VER;p.fill(P2FK_PAD.charCodeAt(0),1);if(b.length)p.set(b.slice(0,P2FK_CHUNK),1);return encB58C(p);}
+async function encP2FK(payload){const b=new TextEncoder().encode(payload);const addrs=[],seen=new Set();for(let i=0;i<b.length;i+=P2FK_CHUNK){const chunk=b.slice(i,i+P2FK_CHUNK);const padded=new Uint8Array(P2FK_CHUNK);padded.fill(P2FK_PAD.charCodeAt(0));padded.set(chunk);const ab=new Uint8Array(1+P2FK_CHUNK);ab[0]=P2FK_VER;ab.set(padded,1);const enc=await encB58C(ab);if(!seen.has(enc)){seen.add(enc);addrs.push(enc);}}return addrs;}
+async function buildSignedOp(type,payloadObj){const delim=randDelim();const json=JSON.stringify(payloadObj);const unsigned=`${type}${delim}${utf8len(json)}${delim}${json}`;const sig=await signMsg((await sha256hex(unsigned)).toUpperCase());const wrapped=`SIG${randDelim()}88${randDelim()}${sig}${unsigned}`;return{json,unsigned,wrapped,encoded:await encP2FK(wrapped)};}
+
+function parseJsonInput(raw,fb){const t=norm(raw);if(!t)return fb;try{return JSON.parse(t);}catch{return fb;}}
+
+async function importWallet(){
+  try{
+    const wif=norm($('wifInput').value),pass=norm($('walletPass').value);
+    if(!wif)throw new Error('Enter WIF'); if(pass.length<WALLET_MIN_PASS)throw new Error(`Password must be at least ${WALLET_MIN_PASS}`);
+    const priv=await wif2priv(wif); const addr=await priv2addr(priv); const keyring=await buildKeyring(priv);
+    localStorage.setItem(WALLET_KEY,JSON.stringify(await encryptPriv(priv,pass)));
+    S.priv=priv;S.addr=addr;S.keyring=keyring;
+    setWalletSummary();
+    setStatus('walletInfo',`Unlocked ✓<br>Main: <span class='mono'>${addr}</span><br>Change-1: <span class='mono'>${keyring.changes[0].addr}</span><br>Change-2: <span class='mono'>${keyring.changes[1].addr}</span>`,'ok');
+  }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
+}
+async function unlockWallet(){
+  try{
+    const saved=localStorage.getItem(WALLET_KEY); if(!saved) throw new Error('No saved wallet');
+    const pass=norm($('walletPass').value); if(!pass) throw new Error('Enter password');
+    const priv=await decryptPriv(JSON.parse(saved),pass); const addr=await priv2addr(priv); const keyring=await buildKeyring(priv);
+    S.priv=priv;S.addr=addr;S.keyring=keyring; setWalletSummary();
+    setStatus('walletInfo',`Unlocked ✓<br>Main: <span class='mono'>${addr}</span><br>Change-1: <span class='mono'>${keyring.changes[0].addr}</span><br>Change-2: <span class='mono'>${keyring.changes[1].addr}</span>`,'ok');
+  }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
+}
+function lockWallet(){S.priv=null;S.addr='';S.keyring=null;setWalletSummary();setStatus('walletInfo','Wallet locked.');}
+function forgetWallet(){lockWallet();localStorage.removeItem(WALLET_KEY);setStatus('walletInfo','Saved key removed.');}
+
+async function sendObjTx(){
+  try{
+    if(!S.priv) throw new Error('Unlock wallet first');
+    const objectAddress=norm($('objAddress').value); if(!objectAddress) throw new Error('Object address is required');
+    const obj={nme:norm($('objName').value),urn:norm($('objUrn').value),img:norm($('objImg').value),uri:norm($('objUri').value),dsc:norm($('objDesc').value)};
+    const creators=parseJsonInput($('objCreators').value,[]); const owners=parseJsonInput($('objOwners').value,{}); const roys=parseJsonInput($('objRoys').value,{}); const atr=parseJsonInput($('objAttrs').value,{});
+    if(Array.isArray(creators)&&creators.length)obj.cre=creators; if(Object.keys(owners).length)obj.own=owners; if(Object.keys(roys).length)obj.roy=roys; if(Object.keys(atr).length)obj.atr=atr;
+    Object.keys(obj).forEach(k=>{if(obj[k]===''||(typeof obj[k]==='object'&&!Object.keys(obj[k]).length))delete obj[k];});
+    const built=await buildSignedOp('OBJ',obj);
+    const extra=[objectAddress,S.addr,...(Array.isArray(creators)?creators:[]),...Object.keys(owners||{}),...Object.keys(roys||{})];
+    if(obj.urn) extra.push(await deriveKeywordAddress(obj.urn));
+    const recipients=uniq([...built.encoded,...extra]).map(addr=>({addr,amount:DUST/1e8}));
+    setStatus('objStatus',`Broadcasting OBJ (${recipients.length} outputs)...`);
+    const txid=await broadcastTx(recipients);
+    setStatus('objStatus',`OBJ broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
+  }catch(e){setStatus('objStatus',String(e.message||e),'err');}
+}
+
+function renderOpHints(){const t=$('opType').value;const map={GIV:'GIV: object transfer outside sale (to recipient).',LST:'LST: list object qty at each-price.',BUY:'BUY: purchase listed qty; royalties are added to outputs.',BRN:'BRN: burn qty from current signer pool.'};setStatus('opHints',map[t]||'');}
+
+async function sendOperationTx(){
+  try{
+    if(!S.priv) throw new Error('Unlock wallet first');
+    const type=$('opType').value; const primary=norm($('opObject').value); const qty=Math.max(1,Number($('opQty').value||1)); const each=Math.max(0,Number($('opEach').value||0));
+    if(!primary) throw new Error('Primary address is required');
+    let payload=null,extras=[S.addr],payments=[];
+    if(type==='GIV'){
+      const to=norm($('opExtraAddress').value); if(!to) throw new Error('GIV target address required');
+      payload=[[to,String(qty)],['0',String(randSalt())]]; extras.push(to,primary);
+    }else if(type==='LST'){
+      payload=[[primary,String(qty),String(each)],['0',String(randSalt())]]; extras.push(primary);
+    }else if(type==='BUY'){
+      payload=[[primary,String(qty)],['0',String(randSalt())]];
+      const total=qty*each; if(total<=0) throw new Error('BUY requires qty and each > 0');
+      const roy=parseJsonInput($('opRoyOverride').value,{});
+      let royaltyTotal=0;
+      for(const [addr,rawRate] of Object.entries(roy||{})){const r=Number(rawRate);if(!addr||!isFinite(r)||r<=0)continue;const rate=r<=1?r:r/100;const amt=Math.max(0,total*rate);if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}}
+      const sellerAmount=Math.max(0,total-royaltyTotal); payments.push({addr:primary,amount:sellerAmount});
+    }else if(type==='BRN'){
+      payload=[[0,String(qty)],[0,String(randSalt())]]; extras.push(primary);
+    }else throw new Error('Unsupported op');
+
+    const built=await buildSignedOp(type,payload);
+    const dustRecipients=uniq([...built.encoded,...extras]).map(addr=>({addr,amount:DUST/1e8}));
+    const recipients=[...dustRecipients,...payments];
+    setStatus('opStatus',`Broadcasting ${type} (${recipients.length} outputs)...`);
+    const txid=await broadcastTx(recipients);
+    setStatus('opStatus',`${type} broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
+  }catch(e){setStatus('opStatus',String(e.message||e),'err');}
+}
+
+function asObj(raw){const o=raw?.OBJ||raw?.obj||raw||{};return{address:norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.cre?.[0]||''),name:norm(o.Name||o.name||o.nme||''),urn:norm(o.URN||o.urn||''),creators:Array.isArray(o.Creators||o.cre)?(o.Creators||o.cre):Object.keys(o.Creators||{}),owners:o.Owners||o.own||{},royalties:o.Royalties||o.roy||{}};}
+function renderObjectsTable(list){const tb=$('objectsTable');if(!list.length){tb.innerHTML='<tr><td colspan="5" class="sub">No objects found.</td></tr>';return;}tb.innerHTML=list.map(o=>`<tr><td class="mono">${o.address||'-'}</td><td>${o.name||'-'}<br><span class='sub mono'>${o.urn||''}</span></td><td class='mono'>${(o.creators||[]).join('<br>')||'-'}</td><td class='mono'>${Object.entries(o.owners||{}).map(([k,v])=>`${k}: ${v}`).join('<br>')||'-'}</td><td class='mono'>${Object.entries(o.royalties||{}).map(([k,v])=>`${k}: ${v}`).join('<br>')||'-'}</td></tr>`).join('');}
+
+async function searchObjectsAtProfile(){
+  try{
+    const q=norm($('searchProfile').value); if(!q) throw new Error('Enter profile query');
+    let profile=null;
+    if(q.startsWith('@')) profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q.slice(1))}?mainnet=false`);
+    else if(q.length>=26&&q.length<=40) profile=await fetchJson(`/GetProfileByAddress/${encodeURIComponent(q)}?mainnet=false`);
+    else profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q)}?mainnet=false`);
+    profile=Array.isArray(profile)?profile[0]:profile;
+    const addr=norm(profile?.Address||profile?.address||profile?.Creators?.[0]||profile?.cre?.[0]||'');
+    const urn=norm(profile?.URN||profile?.urn||'');
+    $('profileCard').innerHTML=`<span class='pill'>Profile</span>${urn?`@${urn}`:''}<br><span class='mono'>${addr||'unknown'}</span><br>${norm(profile?.Bio||profile?.bio||'')||''}`;
+
+    const [created,owned]=await Promise.all([
+      fetchJson(`/GetObjectsCreatedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[]),
+      fetchJson(`/GetObjectsOwnedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[])
+    ]);
+    const rows=[...(Array.isArray(created)?created:[]),...(Array.isArray(owned)?owned:[])].map(asObj);
+    const byAddr=new Map(); rows.forEach(r=>{if(r.address)byAddr.set(r.address,r);});
+    const list=[...byAddr.values()]; S.profile=profile; S.objects=list; renderObjectsTable(list);
+    const totalOwned=list.reduce((s,o)=>s+Object.values(o.owners||{}).reduce((a,v)=>a+Number(v||0),0),0);
+    $('reportCard').innerHTML=`<span class='pill'>Report</span> Objects: <b>${list.length}</b> · Total units (owner maps): <b>${totalOwned}</b><br><span class='sub'>Sources: p2fl.io / p2fk.io object/profile endpoints</span>`;
+  }catch(e){setStatus('profileCard',String(e.message||e),'err');setStatus('reportCard','No report yet.');renderObjectsTable([]);}
+}
+
+renderOpHints();
+setWalletSummary();
+</script>
+</body>
+</html>
