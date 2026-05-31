@@ -1,0 +1,1352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SupMart</title>
+  <style>
+    :root{
+      --bg:#050505;--surface:#111111;--surface2:#1a1a1a;
+      --border:#222222;--border2:#333333;
+      --text:#ffffff;--muted:#888888;--muted2:#555555;
+      --acc:#00d084;--acc2:#00b872;
+      --bad:#ff4d4f;--ok:#00d084;
+      --r:4px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+    /* ── NAV ── */
+    .nav{position:sticky;top:0;z-index:100;background:rgba(5,5,5,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-inner{max-width:1280px;margin:0 auto;padding:0 20px;height:54px;display:flex;align-items:center;gap:16px}
+    .brand{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;flex-shrink:0;color:var(--text)}
+    .brand em{font-style:normal;color:var(--acc)}
+    .search-wrap{flex:1;max-width:480px}
+    .search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:7px 12px;font:inherit;font-size:13px}
+    .search-wrap input:focus{outline:none;border-color:var(--acc)}
+    .search-wrap input::placeholder{color:var(--muted)}
+    .nav-right{display:flex;gap:8px;margin-left:auto;align-items:center}
+
+    /* ── BUTTONS ── */
+    .btn{cursor:pointer;border:1px solid var(--border2);border-radius:var(--r);padding:7px 14px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;font-weight:600;letter-spacing:.02em;white-space:nowrap;transition:border-color .15s,background .15s}
+    .btn:hover{border-color:#555;background:var(--surface2)}
+    .btn-acc{background:var(--acc);color:#000;border-color:var(--acc)}
+    .btn-acc:hover{background:var(--acc2);border-color:var(--acc2)}
+    .btn-warn{border-color:#5c1a1a;color:var(--bad)}
+    .btn-warn:hover{background:#1a0000;border-color:var(--bad)}
+    #walletBtn{font-family:ui-monospace,monospace;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+    #walletBtn.connected{border-color:var(--acc);color:var(--acc)}
+
+    /* ── MAIN ── */
+    .main{max-width:1280px;margin:0 auto;padding:28px 20px}
+
+    /* ── PROFILE ── */
+    .profile-section{display:none;margin-bottom:28px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:24px}
+    .profile-section.visible{display:flex;gap:20px;align-items:flex-start}
+    .avatar{width:72px;height:72px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)}
+    .pinfo{flex:1;min-width:0}
+    .phandle{font-size:1.25rem;font-weight:700;margin-bottom:3px}
+    .paddr{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);margin-bottom:6px;word-break:break-all}
+    .pbio{color:var(--muted);font-size:13px;margin-bottom:12px}
+    .pstats{display:flex;gap:28px}
+    .pstat-val{font-size:1.1rem;font-weight:700;color:var(--acc)}
+    .pstat-lbl{font-size:11px;color:var(--muted)}
+
+    /* ── TABS ── */
+    .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:20px}
+    .tab{padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);font-size:13px;font-weight:500;margin-bottom:-1px;transition:color .15s,border-color .15s}
+    .tab.active{color:var(--text);border-bottom-color:var(--acc)}
+    .tab:hover{color:var(--text)}
+    .browse-menu{display:none;gap:8px;align-items:center;flex-wrap:wrap;margin:-8px 0 18px}
+    .browse-menu.visible{display:flex}
+    .browse-menu select{width:auto;min-width:130px;padding:7px 10px}
+    .check-wrap{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);border-radius:var(--r);padding:6px 8px;background:var(--surface)}
+    .check-wrap input{width:auto}
+
+    /* ── SECTION ── */
+    .sec-title{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
+    .empty{padding:64px 0;text-align:center;color:var(--muted2);font-size:14px}
+    .home-view{display:none}
+    .home-view.visible{display:block}
+    .hero-card{background:linear-gradient(135deg,#101010,#171717 55%,#082418);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:18px}
+    .hero-card h1{font-size:1.8rem;line-height:1.1;margin-bottom:8px}
+    .hero-card p{max-width:760px;color:#cfcfcf}
+    .trend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .trend-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px}
+    .trend-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .trend-rank{font-size:11px;color:var(--acc);text-transform:uppercase;letter-spacing:.08em}
+    .trend-term{font-size:1rem;font-weight:700;word-break:break-word}
+    .trend-meta{font-size:11px;color:var(--muted);text-align:right}
+    .trend-objects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .trend-object{border:1px solid var(--border);border-radius:8px;background:var(--surface2);overflow:hidden;cursor:pointer;transition:border-color .15s,transform .1s;padding:0;color:inherit;font:inherit;text-align:left}
+    .trend-object:hover{border-color:#4d4d4d;transform:translateY(-1px)}
+    .trend-object-thumb{aspect-ratio:1/1;background:#0d0d0d;display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:28px}
+    .trend-object-thumb img{width:100%;height:100%;object-fit:cover}
+    .trend-object-body{padding:8px}
+    .trend-object-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trend-object-sub{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trend-empty{padding:16px;border:1px dashed var(--border2);border-radius:8px;color:var(--muted);font-size:12px;text-align:center}
+
+    /* ── CARD GRID ── */
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+    .obj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:border-color .15s,transform .1s}
+    .obj-card:hover{border-color:#444;transform:translateY(-2px)}
+    .obj-thumb{width:100%;aspect-ratio:1/1;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--muted2);overflow:hidden}
+    .obj-thumb img{width:100%;height:100%;object-fit:cover}
+    .obj-body{padding:10px 12px}
+    .obj-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+    .obj-urn{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+    .obj-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+    .obj-qty{font-size:11px;color:var(--muted)}
+    .creator-chip{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}
+    .quick-buy-btn{padding:4px 8px;font-size:11px}
+
+    /* ── MODALS ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:20px}
+    .overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+    .modal-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+    .modal-hd h2{font-size:15px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+    .modal-hd .sub{font-size:11px;color:var(--muted);font-weight:400}
+    .modal-x{cursor:pointer;background:none;border:none;color:var(--muted);font-size:20px;line-height:1;padding:0;transition:color .15s}
+    .modal-x:hover{color:var(--text)}
+    .modal-bd{padding:20px}
+    .detail-wrap{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:16px}
+    .detail-media{width:100%;aspect-ratio:1/1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--muted2)}
+    .detail-media img{width:100%;height:100%;object-fit:cover}
+    .detail-meta{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .detail-title{font-size:17px;font-weight:700;word-break:break-word}
+    .detail-row{font-size:12px;color:var(--muted);word-break:break-all}
+    .detail-actions{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+    .detail-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+    .detail-panel{border:1px solid var(--border);border-radius:var(--r);background:var(--surface2);padding:12px}
+    .detail-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+    .detail-stack{display:flex;flex-direction:column;gap:8px}
+    .detail-mini{border:1px solid var(--border);border-radius:6px;background:rgba(0,0,0,.18);padding:10px}
+    .detail-mini-main{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .detail-mini-title{font-size:12px;font-weight:600}
+    .detail-mini-copy{font-size:11px;color:var(--muted);word-break:break-all}
+    .detail-mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .detail-mini-actions .btn{padding:5px 9px;font-size:11px}
+    .detail-provenance-list{display:flex;flex-direction:column;gap:8px}
+    .detail-provenance-line{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+    .detail-provenance-line span:last-child{text-align:right;word-break:break-all}
+    .detail-empty{font-size:12px;color:var(--muted)}
+    .detail-preview{display:flex;gap:10px;align-items:center;border:1px solid var(--border);border-radius:8px;background:var(--surface2);padding:10px}
+    .detail-preview-media{width:56px;height:56px;border-radius:8px;overflow:hidden;background:#0d0d0d;display:flex;align-items:center;justify-content:center;color:var(--muted2);flex-shrink:0}
+    .detail-preview-media img{width:100%;height:100%;object-fit:cover}
+    .detail-preview-meta{min-width:0}
+    .detail-preview-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .detail-preview-sub{font-size:11px;color:var(--muted);word-break:break-all}
+
+    /* ── FORMS ── */
+    label{display:block;font-size:11px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+    input,textarea,select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font:inherit;font-size:13px;transition:border-color .15s}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--acc)}
+    input::placeholder,textarea::placeholder{color:var(--muted2)}
+    textarea{min-height:60px;resize:vertical}
+    select{cursor:pointer}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+    /* ── STATUS (inside modals) ── */
+    .status{margin-top:10px;padding:8px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-size:12px;color:var(--muted);word-break:break-all}
+    .status.ok{border-color:#1a4d32;background:#0a1f14;color:#86efac}
+    .status.err{border-color:#5c1a1a;background:#1a0000;color:var(--bad)}
+
+    /* ── TOASTS ── */
+    #toastBox{position:fixed;bottom:24px;right:24px;z-index:400;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px}
+    .toast{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:10px 16px;font-size:13px;pointer-events:auto;animation:tIn .2s ease;word-break:break-all}
+    .toast.ok{border-color:#1a4d32;color:#86efac}
+    .toast.err{border-color:#5c1a1a;color:var(--bad)}
+    @keyframes tIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    .mono{font-family:ui-monospace,monospace;word-break:break-all}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);font-size:11px}
+    .confirm-summary{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+    .confirm-line{display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)}
+    .confirm-line span:last-child{text-align:right;word-break:break-all}
+
+    @media(max-width:640px){
+      .nav-inner{gap:8px}
+      .search-wrap{flex:1;max-width:none}
+      .brand{font-size:.9rem}
+      .card-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
+      .profile-section.visible{flex-direction:column}
+      .row2{grid-template-columns:1fr}
+      .detail-wrap{grid-template-columns:1fr}
+      .detail-panels,.trend-objects{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════ NAV ════════════════════════════ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">Sup<em>Mart</em></div>
+    <div class="search-wrap">
+      <input id="searchProfile" placeholder="Search @handle or address…"
+             onkeydown="if(event.key==='Enter')searchObjectsAtProfile()" />
+    </div>
+    <div class="nav-right">
+      <button class="btn" onclick="homeSearch()">Home</button>
+      <button class="btn btn-acc" onclick="openModal('createModal')">Create</button>
+      <button class="btn" onclick="openModal('tradeModal')">Trade</button>
+      <button class="btn" id="walletBtn" onclick="openModal('walletModal')">Connect Wallet</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════════════════════════ MAIN ════════════════════════════ -->
+<div class="main">
+
+  <div class="home-view visible" id="trendingHome">
+    <div class="hero-card">
+      <h1>Trending object trails</h1>
+      <p>Explore objects surfacing around the hottest recent search strings on p2fk/p2fl, then jump straight into object details, provenance, and listings.</p>
+    </div>
+    <div id="trendingStatus" class="status">Loading trending searches…</div>
+    <div class="trend-grid" id="trendingGrid"></div>
+  </div>
+
+  <!-- Profile header (revealed after search) -->
+  <div class="profile-section" id="profileSection">
+    <div class="avatar" id="profileAvatar">◎</div>
+    <div class="pinfo">
+      <div class="phandle" id="profileHandle"></div>
+      <div class="paddr mono" id="profileAddr"></div>
+      <div class="pbio" id="profileBio"></div>
+      <div class="pstats">
+        <div>
+          <div class="pstat-val" id="statObjects">0</div>
+          <div class="pstat-lbl">Objects</div>
+        </div>
+        <div>
+          <div class="pstat-val" id="statUnits">0</div>
+          <div class="pstat-lbl">Total Units</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs (visible after search) -->
+  <div id="tabsRow" style="display:none">
+    <div class="tabs">
+      <div class="tab active" id="tabCreated" onclick="switchTab('created')">Created</div>
+      <div class="tab" id="tabOwned" onclick="switchTab('owned')">Owned</div>
+    </div>
+  </div>
+  <div class="browse-menu" id="browseMenu">
+    <button class="btn" onclick="homeSearch()">Home</button>
+    <select id="sortSelect" onchange="applyBrowseFiltersAndRender()">
+      <option value="default">Sort: Default</option>
+      <option value="name">Sort: Name (A-Z)</option>
+      <option value="units">Sort: Units (High-Low)</option>
+      <option value="lowest">Sort: Lowest Listing</option>
+    </select>
+    <select id="categorySelect" onchange="applyBrowseFiltersAndRender()">
+      <option value="all">Category: All</option>
+    </select>
+    <label class="check-wrap">
+      <input id="listedOnly" type="checkbox" onchange="applyBrowseFiltersAndRender()" />
+      <span>Listed only</span>
+    </label>
+  </div>
+
+  <!-- Object grid -->
+  <div class="sec-title" id="gridTitle">Explore Objects</div>
+  <div class="empty" id="emptyState">Search a profile above to browse objects.</div>
+  <div class="card-grid" id="objectsGrid"></div>
+
+</div>
+
+<!-- ════════════════════════════ MODALS ════════════════════════════ -->
+
+<!-- Wallet -->
+<div class="overlay" id="walletModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Built-in Wallet <span class="sub">testnet3 · sup_iw_v1</span></h2>
+      <button class="modal-x" onclick="closeModal('walletModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <label>WIF private key (testnet3)</label>
+      <input id="wifInput" type="password" placeholder="c… or 9…" />
+      <label>Password <span class="sub">(min 12 chars, for local encryption)</span></label>
+      <input id="walletPass" type="password" />
+      <div class="form-actions">
+        <button class="btn btn-acc" onclick="importWallet()">Import + Unlock</button>
+        <button class="btn" onclick="unlockWallet()">Unlock Saved</button>
+        <button class="btn" onclick="lockWallet()">Lock</button>
+        <button class="btn btn-warn" onclick="forgetWallet()">Forget</button>
+      </div>
+      <div id="walletInfo" class="status">No key loaded.</div>
+      <div class="form-actions" id="walletBrowseActions" style="display:none">
+        <button class="btn" onclick="browseWalletObjects()">Browse My Objects</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create (OBJ) -->
+<div class="overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Create Object <span class="sub">OBJ transaction</span></h2>
+      <button class="modal-x" onclick="closeModal('createModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <label>Object address</label>
+      <input id="objAddress" placeholder="testnet3 object address" />
+      <div class="row2">
+        <div><label>Name</label><input id="objName" /></div>
+        <div><label>URN</label><input id="objUrn" placeholder="IPFS:… or txid/file" /></div>
+      </div>
+      <div class="row2">
+        <div><label>Image URL</label><input id="objImg" /></div>
+        <div><label>URI</label><input id="objUri" /></div>
+      </div>
+      <label>Description</label><textarea id="objDesc"></textarea>
+      <div class="row2">
+        <div><label>Creators JSON array</label><textarea id="objCreators" placeholder='["creatorAddress"]'></textarea></div>
+        <div><label>Owners JSON map</label><textarea id="objOwners" placeholder='{"ownerAddress":1}'></textarea></div>
+      </div>
+      <div class="row2">
+        <div><label>Royalties JSON map</label><textarea id="objRoys" placeholder='{"royaltyAddress":0.05}'></textarea></div>
+        <div><label>Attributes JSON map</label><textarea id="objAttrs" placeholder='{"type":"collectible"}'></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-acc" onclick="sendObjTx()">Broadcast OBJ</button>
+      </div>
+      <div id="objStatus" class="status">Ready.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Trade (GIV / LST / BUY / BRN) -->
+<div class="overlay" id="tradeModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Trade <span class="sub">GIV / LST / BUY / BRN</span></h2>
+      <button class="modal-x" onclick="closeModal('tradeModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <label>Operation</label>
+      <select id="opType" onchange="renderOpHints()">
+        <option value="GIV">GIV — Transfer outside sale</option>
+        <option value="LST">LST — List for sale</option>
+        <option value="BUY">BUY — Purchase listing</option>
+        <option value="BRN">BRN — Burn</option>
+      </select>
+      <label>Primary object address (or seller for BUY)</label>
+      <input id="opObject" placeholder="object address or seller address" />
+      <div class="row2">
+        <div><label>Qty</label><input id="opQty" type="number" min="1" value="1" /></div>
+        <div><label>Each BTC (LST / BUY)</label><input id="opEach" type="number" min="0" step="0.00000001" value="0.00000546" /></div>
+      </div>
+      <label>Extra address (GIV recipient)</label>
+      <input id="opExtraAddress" placeholder="recipient for GIV" />
+      <label>Royalties JSON map for BUY (optional override)</label>
+      <textarea id="opRoyOverride" placeholder='{"royaltyAddress":0.05}'></textarea>
+      <div id="opHints" class="status">GIV: sends object quantity to a target outside a sale.</div>
+      <div class="form-actions">
+        <button class="btn btn-acc" onclick="sendOperationTx()">Broadcast</button>
+      </div>
+      <div id="opStatus" class="status">Ready.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Object details -->
+<div class="overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Object Details <span class="sub" id="detailAddressSub"></span></h2>
+      <button class="modal-x" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="detail-wrap">
+        <div class="detail-media" id="detailMedia">◢</div>
+        <div class="detail-meta">
+          <div class="detail-title" id="detailName">Untitled</div>
+          <div class="detail-row">URN: <span class="mono" id="detailUrn">—</span></div>
+          <div class="detail-row">Creator: <span class="mono" id="detailCreator">—</span></div>
+          <div class="detail-row">Units: <span id="detailUnits">0</span></div>
+          <div class="detail-row" id="detailListingRow" style="display:none">Listing: <span id="detailListingText"></span></div>
+          <div class="detail-row" id="detailPendingRow" style="display:none">Pending: <span id="detailPendingText"></span></div>
+          <div class="detail-row" id="detailAttrRow" style="display:none">Attributes: <span id="detailAttrs"></span></div>
+          <div class="detail-row" id="detailDesc">—</div>
+        </div>
+      </div>
+
+      <div class="detail-panels">
+        <div class="detail-panel">
+          <h3>Listings</h3>
+          <div class="detail-stack" id="detailListings"></div>
+        </div>
+        <div class="detail-panel">
+          <h3>Provenance</h3>
+          <div class="detail-provenance-list" id="detailProvenance"></div>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <label>Qty</label>
+        <input id="detailQty" type="number" min="1" value="1" />
+        <label>Each BTC (for list/buy)</label>
+        <input id="detailEach" type="number" min="0" step="0.00000001" value="0.00000546" />
+        <label>Recipient (for give)</label>
+        <input id="detailRecipient" placeholder="testnet3 recipient" />
+        <label>Seller (for buy)</label>
+        <input id="detailSeller" placeholder="seller address" />
+        <div class="form-actions">
+          <button class="btn" onclick="executeDetailTrade('GIV')">Give</button>
+          <button class="btn" onclick="executeDetailTrade('LST')">List</button>
+          <button class="btn btn-acc" onclick="executeDetailTrade('BUY')">Buy</button>
+        </div>
+        <div id="detailStatus" class="status">Select an action to prepare and broadcast from this object.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction confirmation -->
+<div class="overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2><span id="confirmTitle">Confirm transaction</span> <span class="sub" id="confirmSubtitle">Review before broadcast</span></h2>
+      <button class="modal-x" onclick="cancelConfirmation()">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="confirmPreview" class="detail-preview"></div>
+      <div class="confirm-summary" id="confirmSummary"></div>
+      <div id="confirmPrompt" class="status">Are you sure you want to broadcast this transaction?</div>
+      <div class="form-actions">
+        <button class="btn" onclick="cancelConfirmation()">Cancel</button>
+        <button class="btn btn-acc" onclick="acceptConfirmation()">Yes, broadcast</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastBox"></div>
+
+<script>
+const B58='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const API_PRIMARY='https://p2fl.io';
+const API_FALLBACK='https://p2fk.io';
+const MEMPOOL_API='https://mempool.space/testnet/api';
+const P2FK_VER=0x6f;
+const P2FK_CHUNK=20;
+const P2FK_PAD='#';
+const DUST=546;
+const FEE_DEFAULT=10;
+const FEE_MIN=2;
+const PRICE_COMPARISON_EPSILON=1e-8;
+const MIN_DUST_OUTPUTS_FOR_STATE_ENGINE=2;
+
+const WALLET_KEY='sup_iw_v1';
+const WALLET_MIN_PASS=12;
+const WALLET_PBKDF2=600000;
+const CHANGE_COUNT=2;
+const CHANGE_PREFIX='sup:testnet3:change:';
+const SAFE_DELIMITERS=['\\','/',':','*','?','"','<','>','|'];
+const IPFS_GATEWAYS=['https://nftstorage.link/ipfs/','https://ipfs.io/ipfs/'];
+
+const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[],selectedObject:null,walletProfile:null,homeTrends:[],pendingConfirm:null,mode:'home'};
+const $=(id)=>document.getElementById(id);
+const norm=(x)=>String(x??'').trim();
+const utf8len=(t)=>new TextEncoder().encode(String(t??'')).length;
+const uniq=(arr)=>Array.from(new Set(arr.filter(Boolean)));
+const shortAddr=(addr,start=8,end=4)=>{const a=norm(addr);return a&&a.length>(start+end)?`${a.slice(0,start)}…${a.slice(-end)}`:a||'—';};
+const fmtBtc=(v)=>Number(v||0).toFixed(8);
+
+// ── UI helpers ──────────────────────────────────────────────────
+
+function openModal(id){$(id).classList.add('open');}
+function closeModal(id){$(id).classList.remove('open');}
+document.addEventListener('click',e=>{
+  if(!e.target.classList.contains('overlay'))return;
+  if(e.target.id==='confirmModal')cancelConfirmation();
+  else e.target.classList.remove('open');
+});
+
+const TOAST_DISPLAY_MS=4000;
+const TOAST_FADE_MS=300;
+
+function showToast(msg,type=''){
+  const box=$('toastBox');
+  const t=document.createElement('div');
+  t.className='toast '+(type||'');
+  t.innerHTML=msg;
+  box.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition=`opacity ${TOAST_FADE_MS}ms`;setTimeout(()=>t.remove(),TOAST_FADE_MS);},TOAST_DISPLAY_MS);
+}
+
+function buildObjectPreviewHtml(obj={},fallback='◢'){
+  const name=esc(obj.name||obj.nme||'Untitled');
+  const sub=esc(obj.urn||obj.address||'No object selected');
+  return `<div class="detail-preview-media">${renderImageTag(obj.img,fallback)}</div><div class="detail-preview-meta"><div class="detail-preview-name">${name}</div><div class="detail-preview-sub">${sub}</div></div>`;
+}
+
+function setStatus(id,msg,type=''){const el=$(id);if(!el)return;el.className='status '+(type||'');el.innerHTML=msg;}
+
+function setWalletSummary(){
+  const btn=$('walletBtn');
+  const browse=$('walletBrowseActions');
+  if(S.priv){
+    btn.textContent=S.walletProfile?.urn?`@${S.walletProfile.urn}`:shortAddr(S.addr,10,4);
+    btn.title=S.walletProfile?.urn?`${S.addr} · @${S.walletProfile.urn}`:S.addr;
+    btn.classList.add('connected');
+    browse.style.display='';
+  }else{
+    btn.textContent='Connect Wallet';
+    btn.title='';
+    btn.classList.remove('connected');
+    browse.style.display='none';
+  }
+}
+
+let _tabState={created:[],owned:[]};
+let _activeTab='created';
+let _visibleObjects=[];
+let _walletProfileReqSeq=0;
+
+function setMainMode(mode){
+  S.mode=mode;
+  $('trendingHome').classList.toggle('visible',mode==='home');
+  $('profileSection').classList.toggle('visible',mode==='profile');
+  $('tabsRow').style.display=mode==='profile'?'':'none';
+  $('browseMenu').classList.toggle('visible',mode==='profile');
+  $('gridTitle').style.display=mode==='profile'?'':'none';
+  $('objectsGrid').style.display=mode==='profile'?'grid':'none';
+  $('emptyState').style.display=mode==='profile'?'':'none';
+}
+
+function homeSearch(){
+  setMainMode('home');
+  $('objectsGrid').innerHTML='';
+  $('emptyState').style.display='none';
+  $('searchProfile').value='';
+  fetchTrendingHome().catch(e=>setStatus('trendingStatus',String(e.message||e),'err'));
+}
+
+function browseWalletObjects(){
+  if(!S.addr){openModal('walletModal');return;}
+  $('searchProfile').value=S.walletProfile?.urn?`@${S.walletProfile.urn}`:S.addr;
+  closeModal('walletModal');
+  searchObjectsAtProfile();
+}
+
+function cancelConfirmation(){
+  if(!S.pendingConfirm)return;
+  const done=S.pendingConfirm.resolve;
+  S.pendingConfirm=null;
+  closeModal('confirmModal');
+  done(false);
+}
+
+function acceptConfirmation(){
+  if(!S.pendingConfirm)return;
+  const done=S.pendingConfirm.resolve;
+  S.pendingConfirm=null;
+  closeModal('confirmModal');
+  done(true);
+}
+
+async function requestTxConfirmation(ctx={}){
+  $('confirmTitle').textContent=ctx.title||'Confirm transaction';
+  $('confirmSubtitle').textContent=ctx.subtitle||'Review before broadcast';
+  $('confirmPreview').innerHTML=buildObjectPreviewHtml(ctx.object||{},'◢');
+  $('confirmSummary').innerHTML=(ctx.lines||[]).map(([label,value])=>`<div class="confirm-line"><span>${esc(label)}</span><span>${esc(value)}</span></div>`).join('');
+  $('confirmPrompt').textContent=ctx.prompt||'Are you sure you want to broadcast this transaction?';
+  openModal('confirmModal');
+  return new Promise(resolve=>{S.pendingConfirm={resolve};});
+}
+
+function switchTab(tab){
+  _activeTab=tab;
+  $('tabCreated').classList.toggle('active',tab==='created');
+  $('tabOwned').classList.toggle('active',tab==='owned');
+  applyBrowseFiltersAndRender();
+}
+
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const looksLikeCid=s=>/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[1-9A-HJ-NP-Za-km-z]{20,})$/.test(norm(s));
+
+function toNumberLike(v,depth=0){
+  if(depth>8)return 0;
+  if(typeof v==='number')return Number.isFinite(v)?v:0;
+  if(typeof v==='string'){
+    const n=Number(v.replace(/,/g,'').trim());
+    return Number.isFinite(n)?n:0;
+  }
+  if(Array.isArray(v))return v.reduce((s,x)=>s+toNumberLike(x,depth+1),0);
+  if(v&&typeof v==='object'){
+    const pref=['qty','quantity','units','amount','amt','value','Value','Quantity','Units','Amount'];
+    for(const k of pref){if(k in v)return toNumberLike(v[k],depth+1);}
+    const vals=Object.values(v);
+    return vals.length===1?toNumberLike(vals[0],depth+1):0;
+  }
+  return 0;
+}
+
+function sumOwnerUnits(owners){
+  if(Array.isArray(owners))return owners.reduce((s,o)=>s+toNumberLike(o),0);
+  if(owners&&typeof owners==='object')return Object.values(owners).reduce((s,v)=>s+toNumberLike(v),0);
+  return toNumberLike(owners);
+}
+
+function normalizeIpfsRef(raw){
+  const t=norm(raw);
+  if(!t)return '';
+  if(/^https?:\/\//i.test(t))return t;
+  if(/^ipfs:\/\//i.test(t))return `${IPFS_GATEWAYS[0]}${t.replace(/^ipfs:\/\//i,'').replace(/^ipfs\//i,'')}`;
+  if(/^ipfs:/i.test(t))return `${IPFS_GATEWAYS[0]}${t.replace(/^ipfs:/i,'').replace(/^\/+/,'')}`;
+  if(/^\/?ipfs\//i.test(t))return `${IPFS_GATEWAYS[0]}${t.replace(/^\/?ipfs\//i,'')}`;
+  return looksLikeCid(t)?`${IPFS_GATEWAYS[0]}${t}`:'';
+}
+
+async function fetchJsonFromAny(url){
+  const base=normalizeIpfsRef(url)||norm(url);
+  if(!base)return null;
+  const candidates=base.startsWith('https://')&&base.includes('/ipfs/')
+    ?[base,...IPFS_GATEWAYS.map(g=>`${g}${base.split('/ipfs/')[1]}`)]
+    :[base];
+  for(const u of uniq(candidates)){
+    try{
+      const r=await fetch(u);
+      if(!r.ok)continue;
+      return await r.json();
+    }catch{}
+  }
+  return null;
+}
+
+function extractListings(obj){
+  const listingSrc=obj.listings||obj.listing||obj.lst||obj.Listings||obj.Listing||null;
+  if(!listingSrc)return [];
+  const entries=Array.isArray(listingSrc)?listingSrc:(typeof listingSrc==='object'?Object.values(listingSrc):[]);
+  const out=[];
+  for(const e of entries){
+    if(!e||typeof e!=='object')continue;
+    const seller=norm(e.seller||e.address||e.owner||e.Owner||'');
+    const each=toNumberLike(e.each??e.price??e.Price??e.amount);
+    const qty=Math.max(0,toNumberLike(e.qty??e.quantity??e.units??e.amountAvailable??e.available));
+    if(each>0)out.push({seller,each,qty:qty||0});
+  }
+  return out.sort((a,b)=>a.each-b.each);
+}
+
+function detectListing(obj){
+  const list=extractListings(obj);
+  return list.length?list[0]:null;
+}
+
+function ownerUnitsForAddress(owners,address){
+  const a=norm(address);
+  if(!a||!owners||typeof owners!=='object')return 0;
+  if(Array.isArray(owners)){
+    return owners.reduce((s,o)=>{
+      if(o&&typeof o==='object'&&norm(o.address||o.owner||o.Owner)===a)return s+toNumberLike(o);
+      return s;
+    },0);
+  }
+  return toNumberLike(owners[a]??owners[a.toLowerCase()]??owners[a.toUpperCase()]??0);
+}
+
+async function resolveObjectImage(obj){
+  const direct=[obj.img,obj.image,obj.thumbnail,obj.icon,obj.preview];
+  for(const c of direct){
+    const u=normalizeIpfsRef(c)||norm(c);
+    if(u)return u;
+  }
+  for(const metaRef of [obj.uri,obj.urn]){
+    const meta=await fetchJsonFromAny(metaRef);
+    if(!meta||typeof meta!=='object')continue;
+    for(const k of ['image','displayUri','artifactUri','thumbnailUri','image_url','imageUrl']){
+      const u=normalizeIpfsRef(meta[k])||norm(meta[k]);
+      if(u)return u;
+    }
+  }
+  return normalizeIpfsRef(obj.urn)||'';
+}
+
+function imageGatewayCandidates(url){
+  const u=norm(url);
+  if(!u)return [];
+  const normalized=normalizeIpfsRef(u)||u;
+  if(!(normalized.startsWith('https://')&&normalized.includes('/ipfs/')))return[normalized];
+  const cid=normalized.split('/ipfs/')[1];
+  return uniq([normalized,...IPFS_GATEWAYS.map(g=>`${g}${cid}`)]);
+}
+
+function renderImageTag(url,fallback='&#9698;'){
+  const cands=imageGatewayCandidates(url);
+  if(!cands.length)return fallback;
+  return `<img src="${esc(cands[0])}" data-fallbacks="${esc(cands.join('|'))}" data-fidx="0" loading="lazy" onerror="rotateImageFallback(this)" />`;
+}
+
+function rotateImageFallback(img){
+  const list=String(img.dataset.fallbacks||'').split('|').filter(Boolean);
+  const next=Number(img.dataset.fidx||0)+1;
+  if(next<list.length){
+    img.dataset.fidx=String(next);
+    img.src=list[next];
+    return;
+  }
+  img.parentElement.innerHTML='&#9698;';
+}
+
+function categoryOfObject(o){
+  const atr=o.attributes&&typeof o.attributes==='object'?o.attributes:{};
+  const raw=norm(atr.category||atr.Category||atr.type||atr.Type||atr.genre||atr.kind||'');
+  return raw?raw.toLowerCase():'uncategorized';
+}
+
+function populateCategoryFilter(list){
+  const select=$('categorySelect');
+  const vals=uniq((list||[]).map(categoryOfObject)).sort((a,b)=>a.localeCompare(b));
+  select.innerHTML=['<option value="all">Category: All</option>',...vals.map(v=>`<option value="${esc(v)}">Category: ${esc(v)}</option>`)].join('');
+}
+
+function applyBrowseFiltersAndRender(){
+  const base=[...(_tabState[_activeTab]||[])];
+  const listedOnly=$('listedOnly')?.checked;
+  const category=norm($('categorySelect')?.value||'all');
+  const sort=norm($('sortSelect')?.value||'default');
+  let list=base.filter(o=>{
+    if(listedOnly&&!detectListing(o))return false;
+    if(category!=='all'&&categoryOfObject(o)!==category)return false;
+    return true;
+  });
+  if(sort==='name')list.sort((a,b)=>norm(a.name).localeCompare(norm(b.name)));
+  else if(sort==='units')list.sort((a,b)=>sumOwnerUnits(b.owners)-sumOwnerUnits(a.owners));
+  else if(sort==='lowest'){
+    list.sort((a,b)=>{
+      const la=detectListing(a)?.each??Number.POSITIVE_INFINITY;
+      const lb=detectListing(b)?.each??Number.POSITIVE_INFINITY;
+      return la-lb;
+    });
+  }
+  renderObjectCards(list);
+}
+
+function renderObjectCards(list){
+  const grid=$('objectsGrid');
+  const empty=$('emptyState');
+  _visibleObjects=list||[];
+  if(!list||!list.length){
+    grid.innerHTML='';
+    empty.style.display='';
+    empty.textContent='No objects found.';
+    return;
+  }
+  empty.style.display='none';
+  grid.innerHTML=list.map((o,idx)=>{
+    const qty=sumOwnerUnits(o.owners);
+    const creator=(o.creators||[])[0]||'';
+    const creatorShort=creator?creator.slice(0,8)+'\u2026'+creator.slice(-4):'';
+    const listing=detectListing(o);
+    const thumb=renderImageTag(o.img);
+    const buyBtn=listing?`<button class="btn btn-acc quick-buy-btn" data-quick-buy="1" data-index="${idx}">Buy ${Number(listing.each).toFixed(8)} BTC</button>`:'';
+    return `<div class="obj-card" data-index="${idx}" data-address="${esc(o.address||'')}">
+      <div class="obj-thumb">${thumb}</div>
+      <div class="obj-body">
+        <div class="obj-name">${esc(o.name)||'Untitled'}</div>
+        <div class="obj-urn">${esc(o.urn||o.address||'')}</div>
+        ${creatorShort?`<div class="creator-chip mono">by ${esc(creatorShort)}</div>`:''}
+        <div class="obj-footer">
+          <span class="obj-qty">${qty} unit${qty!==1?'s':''}</span>
+          ${buyBtn}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function ownerEntries(owners){
+  if(Array.isArray(owners))return owners.map(o=>({address:norm(o?.address||o?.owner||o?.Owner||''),qty:toNumberLike(o)})).filter(x=>x.address&&x.qty>0);
+  if(owners&&typeof owners==='object')return Object.entries(owners).map(([address,qty])=>({address:norm(address),qty:toNumberLike(qty)})).filter(x=>x.address&&x.qty>0);
+  return [];
+}
+
+function royaltyEntries(royalties){
+  if(!royalties||typeof royalties!=='object')return [];
+  return Object.entries(royalties).map(([address,rate])=>({address:norm(address),rate:Number(rate)})).filter(x=>x.address&&Number.isFinite(x.rate)&&x.rate>0);
+}
+
+function renderDetailListings(o){
+  const listings=extractListings(o);
+  $('detailListings').innerHTML=listings.length?listings.map((listing,idx)=>`<div class="detail-mini"><div class="detail-mini-main"><div><div class="detail-mini-title">${fmtBtc(listing.each)} BTC</div><div class="detail-mini-copy">Seller: ${esc(listing.seller||'Unknown')}</div><div class="detail-mini-copy">Available: ${esc(String(listing.qty||'Unknown'))}</div></div><span class="pill">${idx===0?'Best price':'Listing'}</span></div><div class="detail-mini-actions"><button class="btn" onclick="prefillDetailListing(${idx})">Fill Buy</button><button class="btn btn-acc" onclick="buyDetailListing(${idx})">Buy now</button></div></div>`).join(''):`<div class="detail-empty">No active listings on this object.</div>`;
+}
+
+function renderDetailProvenance(o){
+  const parts=[];
+  const creators=(o.creators||[]).filter(Boolean);
+  const owners=ownerEntries(o.owners);
+  const royalties=royaltyEntries(o.royalties);
+  const attrs=o.attributes&&typeof o.attributes==='object'?Object.entries(o.attributes).filter(([,v])=>norm(v)): [];
+  if(creators.length){
+    parts.push(`<div class="detail-mini"><div class="detail-mini-title">Creators</div>${creators.map(addr=>`<div class="detail-provenance-line"><span>${esc(shortAddr(addr))}</span><span>${esc(addr)}</span></div>`).join('')}</div>`);
+  }
+  if(owners.length){
+    parts.push(`<div class="detail-mini"><div class="detail-mini-title">Current owners</div>${owners.map(entry=>`<div class="detail-provenance-line"><span>${esc(shortAddr(entry.address))}</span><span>${esc(`${entry.qty} unit${entry.qty!==1?'s':''}`)}</span></div>`).join('')}</div>`);
+  }
+  if(royalties.length){
+    parts.push(`<div class="detail-mini"><div class="detail-mini-title">Royalties</div>${royalties.map(entry=>`<div class="detail-provenance-line"><span>${esc(shortAddr(entry.address))}</span><span>${esc(`${(entry.rate*100).toFixed(2)}%`)}</span></div>`).join('')}</div>`);
+  }
+  if(attrs.length){
+    parts.push(`<div class="detail-mini"><div class="detail-mini-title">Metadata hints</div>${attrs.slice(0,6).map(([k,v])=>`<div class="detail-provenance-line"><span>${esc(k)}</span><span>${esc(String(v))}</span></div>`).join('')}</div>`);
+  }
+  $('detailProvenance').innerHTML=parts.length?parts.join(''):`<div class="detail-empty">No provenance metadata available.</div>`;
+}
+
+function prefillDetailListing(index){
+  const listing=extractListings(S.selectedObject||{})[index];
+  if(!listing)return;
+  $('detailQty').value=1;
+  $('detailEach').value=listing.each;
+  $('detailSeller').value=listing.seller||'';
+  setStatus('detailStatus',`Listing loaded from ${listing.seller||'seller'}. Review and press Buy.`,'ok');
+}
+
+function buyDetailListing(index){
+  prefillDetailListing(index);
+  return executeDetailTrade('BUY');
+}
+
+async function fetchObjectsForSearchString(searchString){
+  const raw=await fetchJson(`/GetKnownObjectsBySearchString?searchString=${encodeURIComponent(searchString)}&qty=4&skip=0&mainnet=false`).catch(()=>[]);
+  const parsed=(Array.isArray(raw)?raw:[]).map(asObj).filter(o=>o.address);
+  const resolved=await withResolvedImages(parsed);
+  const byAddr=new Map();
+  resolved.forEach(o=>byAddr.set(o.address,byAddr.has(o.address)?mergeObjectRecords(byAddr.get(o.address),o):o));
+  return [...byAddr.values()].slice(0,4);
+}
+
+function openTrendingObject(trendIndex,objectIndex){
+  const obj=S.homeTrends?.[trendIndex]?.objects?.[objectIndex];
+  if(obj)openObjectDetail(obj);
+}
+
+function renderTrendingHome(){
+  const list=S.homeTrends||[];
+  const grid=$('trendingGrid');
+  if(!list.length){
+    grid.innerHTML='';
+    setStatus('trendingStatus','No trending searches are available right now.');
+    return;
+  }
+  setStatus('trendingStatus',`Trending root searches from the last 24 hours. Jump into the objects surfacing under each phrase.`,'ok');
+  grid.innerHTML=list.map((entry,trendIndex)=>{
+    const rank=entry.Rank??entry.rank??trendIndex+1;
+    const term=norm(entry.SearchString||entry.searchString||'');
+    const count=entry.SuccessfulSearchCount??entry.successfulSearchCount??0;
+    const last=entry.LastResultCount??entry.lastResultCount??0;
+    const objects=entry.objects||[];
+    return `<div class="trend-card"><div class="trend-head"><div><div class="trend-rank">Trend #${rank}</div><div class="trend-term">${esc(term||'Unknown search')}</div></div><div class="trend-meta">${esc(`${count} hits`)}<br>${esc(`${last} results last`)}</div></div>${objects.length?`<div class="trend-objects">${objects.map((obj,objectIndex)=>`<button class="trend-object" onclick="openTrendingObject(${trendIndex},${objectIndex})"><div class="trend-object-thumb">${renderImageTag(obj.img,'◢')}</div><div class="trend-object-body"><div class="trend-object-name">${esc(obj.name||'Untitled')}</div><div class="trend-object-sub">${esc(obj.urn||shortAddr(obj.address))}</div></div></button>`).join('')}</div>`:`<div class="trend-empty">No indexed objects matched this search string right now.</div>`}</div>`;
+  }).join('');
+}
+
+async function fetchTrendingHome(){
+  setStatus('trendingStatus','Loading trending searches…');
+  $('trendingGrid').innerHTML='';
+  const raw=await fetchJson('/GetTrendingRootSearches?qty=8').catch(()=>[]);
+  const trends=Array.isArray(raw)?raw:[];
+  if(!trends.length){
+    S.homeTrends=[];
+    renderTrendingHome();
+    return;
+  }
+  S.homeTrends=await Promise.all(trends.slice(0,8).map(async entry=>({...entry,objects:await fetchObjectsForSearchString(norm(entry.SearchString||entry.searchString||'')).catch(()=>[])})));
+  renderTrendingHome();
+}
+
+function openObjectDetail(o){
+  S.selectedObject=o||null;
+  if(!o)return;
+  $('detailAddressSub').textContent=norm(o.address).slice(0,20)+(o.address?.length>20?'…':'');
+  $('detailName').textContent=o.name||'Untitled';
+  $('detailUrn').textContent=o.urn||o.address||'—';
+  $('detailCreator').textContent=(o.creators||[]).join(', ')||'—';
+  $('detailUnits').textContent=sumOwnerUnits(o.owners);
+  $('detailDesc').textContent=o.description||'';
+  $('detailDesc').style.display=o.description?'':'none';
+  const listing=detectListing(o);
+  const listings=extractListings(o);
+  $('detailListingRow').style.display=listings.length?'':'none';
+  if(listings.length)$('detailListingText').textContent=`${listings.length} active · lowest ${fmtBtc(listings[0].each)} BTC${listings[0].seller?` by ${listings[0].seller}`:''}`;
+  const attrs=o.attributes&&typeof o.attributes==='object'?Object.entries(o.attributes).map(([k,v])=>`${k}: ${v}`).slice(0,3):[];
+  $('detailAttrRow').style.display=attrs.length?'':'none';
+  $('detailAttrs').textContent=attrs.join(' · ');
+  $('detailEach').value=listing?.each||0.00000546;
+  $('detailSeller').value=listing?.seller||ownerEntries(o.owners)[0]?.address||'';
+  $('detailRecipient').value='';
+  $('detailQty').value=1;
+  $('detailStatus').className='status';
+  $('detailStatus').textContent='Select an action to prepare and broadcast from this object.';
+  $('detailMedia').innerHTML=renderImageTag(o.img,'◢');
+  renderDetailListings(o);
+  renderDetailProvenance(o);
+  $('detailPendingRow').style.display='';
+  $('detailPendingText').textContent='Checking mempool…';
+  refreshPendingSummary(o.address).catch(()=>{});
+  $('opObject').value=o.address||'';
+  $('objAddress').value=o.address||'';
+  openModal('detailModal');
+}
+
+async function executeDetailTrade(type){
+  try{
+    if(!S.selectedObject)throw new Error('Select an object first');
+    const qty=Math.max(1,Number($('detailQty').value||1));
+    const each=Math.max(0,Number($('detailEach').value||0));
+    const recipient=norm($('detailRecipient').value);
+    const seller=norm($('detailSeller').value);
+    const primary=type==='BUY'?seller:norm(S.selectedObject.address);
+    if(!primary)throw new Error(type==='BUY'?'Seller is required for BUY':'Object address is required');
+    await sendOperationTx({
+      type,
+      primary,
+      qty,
+      each,
+      objectAddress:type==='BUY'?norm(S.selectedObject.address):'',
+      extraAddress:recipient,
+      royaltiesOverride:type==='BUY'?JSON.stringify(S.selectedObject.royalties||{}):'',
+      statusId:'detailStatus'
+    });
+  }catch(e){
+    setStatus('detailStatus',String(e.message||e),'err');
+  }
+}
+
+// Event delegation: open detail panel from card clicks
+$('objectsGrid').addEventListener('click',e=>{
+  const card=e.target.closest('.obj-card');
+  if(!card)return;
+  const buyBtn=e.target.closest('[data-quick-buy="1"]');
+  if(buyBtn){
+    e.stopPropagation();
+    const idx=Number(buyBtn.dataset.index||card.dataset.index||-1);
+    if(Number.isInteger(idx)&&idx>=0&&_visibleObjects[idx])quickBuyFromCard(_visibleObjects[idx]);
+    return;
+  }
+  const idx=Number(card.dataset.index||-1);
+  const addr=card.dataset.address||'';
+  const found=(Number.isInteger(idx)&&idx>=0&&_visibleObjects[idx])?_visibleObjects[idx]:(S.objects.find(x=>x.address===addr)||null);
+  if(found)openObjectDetail(found);
+});
+
+async function fetchObjectVerbose(address){
+  if(!norm(address))throw new Error('Object address required');
+  const raw=await fetchJson(`/GetObjectByAddress/${encodeURIComponent(address)}?mainnet=false&verbose=true`);
+  return asObj(Array.isArray(raw)?raw[0]:raw);
+}
+
+async function validateFreshListing(objectAddress,seller,each,qty){
+  const verboseObj=await fetchObjectVerbose(objectAddress);
+  const listings=extractListings(verboseObj);
+  if(!listings.length)throw new Error('Listing no longer exists on-chain');
+  const picked=seller?listings.find(x=>norm(x.seller)===norm(seller)):listings[0];
+  if(!picked)throw new Error('Requested seller is no longer listed');
+  if(each>0&&Math.abs(Number(picked.each)-Number(each))>PRICE_COMPARISON_EPSILON){
+    throw new Error(`Listing changed: expected ${each}, now ${picked.each} BTC`);
+  }
+  const sellerUnits=ownerUnitsForAddress(verboseObj.owners,picked.seller);
+  if(sellerUnits<qty)throw new Error(`Listing quantity not available (seller has ${sellerUnits})`);
+  return{object:verboseObj,listing:picked};
+}
+
+function classifyPendingTx(tx){
+  const outs=Array.isArray(tx?.vout)?tx.vout:[];
+  const dustCount=outs.filter(v=>Number(v?.value)===DUST).length;
+  if(dustCount>=MIN_DUST_OUTPUTS_FOR_STATE_ENGINE)return'state-engine-like';
+  return'other';
+}
+
+async function refreshPendingSummary(address){
+  const addr=norm(address);
+  if(!addr){$('detailPendingRow').style.display='none';return;}
+  try{
+    const r=await fetch(`${MEMPOOL_API}/address/${encodeURIComponent(addr)}/txs/mempool`);
+    if(!r.ok)throw new Error(`${r.status}`);
+    const txs=await r.json();
+    if(!Array.isArray(txs)||!txs.length){
+      $('detailPendingText').textContent='No pending transactions.';
+      return;
+    }
+    const buckets=txs.reduce((m,tx)=>{const k=classifyPendingTx(tx);m[k]=(m[k]||0)+1;return m;},{});
+    const parts=[`${txs.length} total`];
+    if(buckets['state-engine-like'])parts.push(`${buckets['state-engine-like']} state-engine-like`);
+    if(buckets.other)parts.push(`${buckets.other} other`);
+    $('detailPendingText').textContent=parts.join(' · ');
+  }catch{
+    $('detailPendingText').textContent='Pending check unavailable.';
+  }
+}
+
+async function quickBuyFromCard(obj){
+  try{
+    if(!S.priv)throw new Error('Unlock wallet first');
+    const listing=detectListing(obj);
+    if(!listing)throw new Error('No active listing found');
+    const fresh=await validateFreshListing(obj.address,listing.seller,listing.each,1);
+    const txid=await sendOperationTx({
+      type:'BUY',
+      primary:fresh.listing.seller,
+      qty:1,
+      each:fresh.listing.each,
+      objectAddress:obj.address,
+      objectName:obj.name,
+      royaltiesOverride:JSON.stringify(obj.royalties||{}),
+      statusId:'opStatus'
+    });
+    if(txid)showToast(`Bought at ${fresh.listing.each} BTC`,'ok');
+  }catch(e){
+    showToast(String(e.message||e),'err');
+  }
+}
+
+async function resolveProfileForAddress(address){
+  const addr=norm(address);
+  if(!addr)return null;
+  const raw=await fetchJson(`/GetProfileByAddress/${encodeURIComponent(addr)}?mainnet=false`).catch(()=>null);
+  const p=Array.isArray(raw)?raw[0]:raw;
+  if(!p||typeof p!=='object')return null;
+  const pAddr=norm(p.Address||p.address||p.Creator||p.creator||'');
+  const urn=norm(p.URN||p.urn||'');
+  const bio=norm(p.Bio||p.bio||'');
+  return{address:pAddr,urn,bio,isAuthentic:!!pAddr&&pAddr===addr};
+}
+
+async function refreshWalletIdentity(){
+  if(!S.addr){setStatus('walletInfo','No key loaded.');return;}
+  const reqId=++_walletProfileReqSeq;
+  const kr=S.keyring;
+  const lines=[`Unlocked ✓`,`Main: <span class='mono'>${S.addr}</span>`];
+  if(kr){
+    lines.push(`Change-1: <span class='mono'>${kr.changes[0].addr}</span>`);
+    lines.push(`Change-2: <span class='mono'>${kr.changes[1].addr}</span>`);
+  }
+  try{
+    const profile=await resolveProfileForAddress(S.addr);
+    if(reqId!==_walletProfileReqSeq)return;
+    S.walletProfile=profile;
+    if(profile?.urn)lines.push(`Profile: @${esc(profile.urn)} ${profile.isAuthentic?'✓ authentic':'⚠ not verified'}`);
+    else lines.push('Profile: none found');
+  }catch{
+    if(reqId!==_walletProfileReqSeq)return;
+    lines.push('Profile: lookup failed');
+  }
+  if(S.walletProfile?.urn)lines.push(`Browse: use “Browse My Objects” to jump into @${esc(S.walletProfile.urn)}`);
+  setStatus('walletInfo',lines.join('<br>'),'ok');
+  setWalletSummary();
+}
+
+// ── Crypto / blockchain (unchanged) ─────────────────────────────
+
+async function fetchJson(path){
+  const urls=[`${API_PRIMARY}${path}`,`${API_FALLBACK}${path}`];
+  let lastErr='';
+  for(const u of urls){
+    try{const r=await fetch(u);if(!r.ok)throw new Error(`${r.status}`);return await r.json();}
+    catch(e){lastErr=String(e.message||e);}
+  }
+  throw new Error(`API request failed (${lastErr})`);
+}
+
+function b2bi(b){let v=0n;for(const x of b)v=(v<<8n)|BigInt(x);return v;}
+function bi2b32(n){const o=new Uint8Array(32);for(let i=31;i>=0;i--){o[i]=Number(n&0xffn);n>>=8n;}return o;}
+function b2h(b){return Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');}
+function h2b(h){const o=new Uint8Array(h.length/2);for(let i=0;i<o.length;i++)o[i]=parseInt(h.slice(i*2,i*2+2),16);return o;}
+async function sha256(b){return new Uint8Array(await crypto.subtle.digest('SHA-256',b));}
+async function sha256hex(t){return b2h(await sha256(new TextEncoder().encode(t)));}
+function encVI(n){if(n<0xfd)return new Uint8Array([n]);if(n<=0xffff)return new Uint8Array([0xfd,n&0xff,(n>>8)&0xff]);return new Uint8Array([0xfe,n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>>24)&0xff]);}
+async function msgHash(text){const magic=new TextEncoder().encode('Bitcoin Signed Message:\n');const msg=new TextEncoder().encode(text);const ml=encVI(msg.length);const env=new Uint8Array(1+magic.length+ml.length+msg.length);env[0]=magic.length;env.set(magic,1);env.set(ml,1+magic.length);env.set(msg,1+magic.length+ml.length);return sha256(await sha256(env));}
+function encB58(b){if(!(b instanceof Uint8Array))b=new Uint8Array(b);let z=0;while(z<b.length&&b[z]===0)z++;let v=0n;for(const x of b)v=(v<<8n)+BigInt(x);let s='';while(v>0n){const r=Number(v%58n);v/=58n;s=B58[r]+s;}return B58[0].repeat(z)+(s||(z?'':B58[0]));}
+async function encB58C(b){const p=b instanceof Uint8Array?b:new Uint8Array(b);const h=await sha256(await sha256(p));const o=new Uint8Array(p.length+4);o.set(p);o.set(h.slice(0,4),p.length);return encB58(o);}
+function decB58(s){let n=0n;for(const c of s){const i=B58.indexOf(c);if(i<0)throw new Error('Invalid B58');n=n*58n+BigInt(i);}let z=0;for(const c of s){if(c!==B58[0])break;z++;}const o=[];while(n>0n){o.unshift(Number(n&0xffn));n>>=8n;}return new Uint8Array([...new Array(z).fill(0),...o]);}
+async function decB58C(s){const r=decB58(s);if(r.length<5)throw new Error('B58C too short');const p=r.slice(0,-4),c=r.slice(-4);const h=await sha256(await sha256(p));for(let i=0;i<4;i++)if(c[i]!==h[i])throw new Error('Invalid checksum');return p;}
+
+const P=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
+const N=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const Gx=0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n;
+const Gy=0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n;
+const sP=n=>((n%P)+P)%P,sN=n=>((n%N)+N)%N;
+function sInv(a,m){let[r,s,rr,ss]=[m,0n,((a%m)+m)%m,1n];while(rr!==0n){const q=r/rr;[r,s,rr,ss]=[rr,ss,r-q*rr,s-q*ss];}return((s%m)+m)%m;}
+function jDbl(X,Y,Z){if(Y===0n)return[0n,1n,0n];const Y2=sP(Y*Y),S=sP(4n*X*Y2),M=sP(3n*X*X),X2=sP(M*M-2n*S);return[X2,sP(M*(S-X2)-8n*Y2*Y2),sP(2n*Y*Z)];}
+function jAdd(X1,Y1,Z1,X2,Y2,Z2){if(Z1===0n)return[X2,Y2,Z2];if(Z2===0n)return[X1,Y1,Z1];const z1s=sP(Z1*Z1),z2s=sP(Z2*Z2),U1=sP(X1*z2s),U2=sP(X2*z1s),S1=sP(Y1*z2s*Z2),S2=sP(Y2*z1s*Z1),H=sP(U2-U1),R=sP(S2-S1);if(H===0n)return R===0n?jDbl(X1,Y1,Z1):[0n,1n,0n];const Hs=sP(H*H),Hc=sP(H*Hs),X3=sP(R*R-Hc-2n*U1*Hs);return[X3,sP(R*(U1*Hs-X3)-S1*Hc),sP(H*Z1*Z2)];}
+function jAff(X,Y,Z){const zi=sInv(Z,P),zi2=sP(zi*zi);return[sP(X*zi2),sP(Y*sP(zi2*zi))];}
+function sMul(k){let[rx,ry,rz]=[0n,1n,0n],[ax,ay,az]=[Gx,Gy,1n],sc=((k%N)+N)%N;while(sc>0n){if(sc&1n)[rx,ry,rz]=jAdd(rx,ry,rz,ax,ay,az);[ax,ay,az]=jDbl(ax,ay,az);sc>>=1n;}return[rx,ry,rz];}
+function priv2pub(pb){const[jx,jy,jz]=sMul(b2bi(pb));const[x,y]=jAff(jx,jy,jz);return new Uint8Array([(y&1n)?0x03:0x02,...bi2b32(x)]);}
+async function rfc6979k(priv,mh){const hmac=async(key,...parts)=>{const k=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:'SHA-256'},false,['sign']);const sz=parts.reduce((s,p)=>s+p.length,0),m=new Uint8Array(sz);let o=0;for(const p of parts){m.set(p,o);o+=p.length;}return new Uint8Array(await crypto.subtle.sign('HMAC',k,m));};let V=new Uint8Array(32).fill(1),K=new Uint8Array(32).fill(0);K=await hmac(K,V,new Uint8Array([0]),priv,mh);V=await hmac(K,V);K=await hmac(K,V,new Uint8Array([1]),priv,mh);V=await hmac(K,V);for(;;){V=await hmac(K,V);const k=b2bi(V);if(k>=1n&&k<N)return k;K=await hmac(K,V,new Uint8Array([0]));V=await hmac(K,V);}}
+async function ecSign(priv,mhb){const d=b2bi(priv),z=b2bi(mhb),k=await rfc6979k(priv,mhb);const[rx,ry]=jAff(...sMul(k));const r=sN(rx);let s=sN(sInv(k,N)*(z+r*d));let rid=Number(ry&1n)|(rx>=N?2:0);if(s>N/2n){s=N-s;rid^=1;}return{r,s,recoveryId:rid};}
+function derEnc(r,s){const mb=n=>{const b=[];let t=n;while(t>0n){b.unshift(Number(t&0xffn));t>>=8n;}if(!b.length)b.push(0);if(b[0]&0x80)b.unshift(0);return b;};const rb=mb(r),sb=mb(s);return new Uint8Array([0x30,rb.length+sb.length+4,0x02,rb.length,...rb,0x02,sb.length,...sb]);}
+function ripemd160(data){const bytes=data instanceof Uint8Array?data:new TextEncoder().encode(data);const rl32=(x,n)=>(x<<n)|(x>>>(32-n));const ff=(j,x,y,z)=>j<16?x^y^z:j<32?(x&y)|(~x&z):j<48?(x|~y)^z:j<64?(x&z)|(y&~z):x^(y|~z);const KL=[0,0x5A827999,0x6ED9EBA1,0x8F1BBCDC,0xA953FD4E],KR=[0x50A28BE6,0x5C4DD124,0x6D703EF3,0x7A6D76E9,0],RL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2,4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13],RR=[5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14,12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11],SL=[11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12,9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6],SR=[8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8,8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11];const ml=bytes.length,pl=ml%64<56?56-(ml%64):120-(ml%64);const pd=new Uint8Array(ml+pl+8);pd.set(bytes);pd[ml]=0x80;const bl=ml*8;for(let i=0;i<4;i++)pd[ml+pl+i]=(bl>>>(i*8))&0xff;const view=new DataView(pd.buffer);let h0=0x67452301,h1=0xEFCDAB89,h2=0x98BADCFE,h3=0x10325476,h4=0xC3D2E1F0;for(let off=0;off<pd.length;off+=64){const X=Array.from({length:16},(_,i)=>view.getUint32(off+i*4,true));let al=h0,bl_=h1,cl=h2,dl=h3,el=h4,ar=h0,br=h1,cr=h2,dr=h3,er=h4;for(let j=0;j<80;j++){const qi=j>>4;let t=(rl32((al+ff(j,bl_,cl,dl)+X[RL[j]]+KL[qi])|0,SL[j])+el)|0;al=el;el=dl;dl=rl32(cl,10);cl=bl_;bl_=t;t=(rl32((ar+ff(79-j,br,cr,dr)+X[RR[j]]+KR[qi])|0,SR[j])+er)|0;ar=er;er=dr;dr=rl32(cr,10);cr=br;br=t;}const t=(h1+cl+dr)|0;h1=(h2+dl+er)|0;h2=(h3+el+ar)|0;h3=(h4+al+br)|0;h4=(h0+bl_+cr)|0;h0=t;}const out=new Uint8Array(20),dv=new DataView(out.buffer);[h0,h1,h2,h3,h4].forEach((v,i)=>dv.setUint32(i*4,v,true));return out;}
+async function wif2priv(wif){const p=await decB58C(norm(wif));if(p[0]!==0xef)throw new Error('Only testnet3 WIF supported');if(p.length===34)return p.slice(1,33);if(p.length===33)return p.slice(1);throw new Error('Unexpected WIF length');}
+async function priv2addr(pb){const pub=priv2pub(pb),h=ripemd160(await sha256(pub));return encB58C(new Uint8Array([P2FK_VER,...h]));}
+async function encryptPriv(pb,pass){const salt=crypto.getRandomValues(new Uint8Array(32)),iv=crypto.getRandomValues(new Uint8Array(12));const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:WALLET_PBKDF2,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt']);const enc=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,pb);return{salt:Array.from(salt),iv:Array.from(iv),data:Array.from(new Uint8Array(enc))};}
+async function decryptPriv(stored,pass){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:new Uint8Array(stored.salt),iterations:WALLET_PBKDF2,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(stored.iv)},k,new Uint8Array(stored.data)));}
+async function deriveChangeKey(base,label){const seedPfx=new TextEncoder().encode(`${CHANGE_PREFIX}${norm(label)}:`);const bsc=b2bi(base);const ctr=new Uint8Array(4);for(let c=0;c<=0xffffffff;c++){ctr[0]=(c>>>24)&0xff;ctr[1]=(c>>>16)&0xff;ctr[2]=(c>>>8)&0xff;ctr[3]=c&0xff;const seed=new Uint8Array(seedPfx.length+base.length+4);seed.set(seedPfx);seed.set(base,seedPfx.length);seed.set(ctr,seedPfx.length+base.length);const tw=sN(b2bi(await sha256(seed)));if(tw===0n)continue;const d=sN(bsc+tw);if(d===0n)continue;return bi2b32(d);}throw new Error('Could not derive change key');}
+function buildP2PKH(h160){return new Uint8Array([0x76,0xa9,0x14,...h160,0x88,0xac]);}
+async function addrPayout(addr){const p=await decB58C(norm(addr));if(p.length!==21||p[0]!==0x6f)throw new Error(`Not a testnet3 legacy address: ${addr}`);return buildP2PKH(p.slice(1));}
+async function buildSignerEntry(pb,lbl){const pub=priv2pub(pb),h=ripemd160(await sha256(pub)),a=await encB58C(new Uint8Array([P2FK_VER,...h]));return{label:lbl,pb,pub,script:buildP2PKH(h),addr:a};}
+async function buildKeyring(base){const main=await buildSignerEntry(base,'main');const changes=[];for(let i=0;i<CHANGE_COUNT;i++){const d=await deriveChangeKey(base,`slot-${i+1}`);changes.push(await buildSignerEntry(d,`change-${i+1}`));}return{main,changes,all:[main,...changes]};}
+
+function serializeTx(inputs,outputs,sigIdx=-1,sigScript=null){const u32=v=>[v&0xff,(v>>8)&0xff,(v>>16)&0xff,(v>>>24)&0xff];const u64=v=>{const n=BigInt(Math.round(v));return[...u32(Number(n&0xffffffffn)),...u32(Number((n>>32n)&0xffffffffn))];};const vi=n=>n<0xfd?[n]:n<=0xffff?[0xfd,n&0xff,(n>>8)&0xff]:[0xfe,n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>>24)&0xff];const out=[...u32(1),...vi(inputs.length)];for(let i=0;i<inputs.length;i++){out.push(...Array.from(h2b(inputs[i].txid)).reverse(),...u32(inputs[i].vout));const sc=sigIdx>=0?(i===sigIdx?sigScript:new Uint8Array([])):inputs[i].scriptSig||new Uint8Array([]);out.push(...vi(sc.length),...sc,...u32(0xffffffff));}out.push(...vi(outputs.length));for(const o of outputs)out.push(...u64(o.sat),...vi(o.script.length),...o.script);out.push(...u32(0));return new Uint8Array(out);}
+async function buildTx(utxos,outputs){const inputs=utxos.map(u=>({txid:u.txid,vout:u.vout,signer:u.signer,scriptSig:new Uint8Array([])}));const finalOuts=await Promise.all(outputs.map(async o=>({sat:o.sat,script:await addrPayout(o.addr)})));for(let i=0;i<inputs.length;i++){const sg=inputs[i].signer;const pre=new Uint8Array([...serializeTx(inputs,finalOuts,i,sg.script),1,0,0,0]);const sh=await sha256(await sha256(pre));const{r,s}=await ecSign(sg.pb,sh);const der=derEnc(r,s);inputs[i].scriptSig=new Uint8Array([der.length+1,...der,0x01,sg.pub.length,...sg.pub]);}return b2h(serializeTx(inputs,finalOuts));}
+async function broadcastTx(outputs){if(!S.priv)throw new Error('Wallet is locked');const kr=S.keyring||await buildKeyring(S.priv);if(!S.keyring)S.keyring=kr;const[cA,cB]=kr.changes;const utxoGroups=await Promise.all(kr.all.map(async sg=>{const r=await fetch(`${MEMPOOL_API}/address/${encodeURIComponent(sg.addr)}/utxo`);if(!r.ok)throw new Error(`UTXO fetch failed for ${sg.label}`);const j=await r.json();return j.filter(u=>u.status?.confirmed).map(u=>({...u,srcAddr:sg.addr,signer:sg}));}));const allUtxos=utxoGroups.flat();if(!allUtxos.length)throw new Error('No confirmed UTXOs found');let feeRate=FEE_DEFAULT;try{const fr=await fetch(`${MEMPOOL_API}/v1/fees/recommended`);const fp=await fr.json();feeRate=Math.max(Number(fp?.halfHourFee||FEE_DEFAULT),FEE_MIN);}catch{}const estFee=(ic,oc)=>Math.ceil((10+148*ic+34*oc)*feeRate);const outSats=outputs.map(o=>({addr:o.addr,sat:Math.round(o.amount*1e8)}));const totalOut=outSats.reduce((s,o)=>s+o.sat,0);const totByAddr=kr.all.reduce((m,sg)=>m.set(sg.addr,0),new Map());allUtxos.forEach(u=>totByAddr.set(u.srcAddr,(totByAddr.get(u.srcAddr)||0)+Number(u.value||0)));const candidates=[kr.main,cA,cB].sort((a,b)=>(totByAddr.get(b.addr)||0)-(totByAddr.get(a.addr)||0));let sel=null,selUtxos=[],selTotal=0;for(const src of candidates){const pool=allUtxos.filter(u=>u.srcAddr===src.addr).sort((a,b)=>b.value-a.value);let lo=[],lt=0;for(const u of pool){lo.push(u);lt+=u.value;if(lt>=totalOut+estFee(lo.length,outSats.length+1)){sel=src;selUtxos=lo;selTotal=lt;break;}}if(selUtxos.length)break;}if(!selUtxos.length){const mixPool=[...allUtxos].sort((a,b)=>b.value-a.value);let lo=[],lt=0;for(const u of mixPool){lo.push(u);lt+=u.value;if(lt>=totalOut+estFee(lo.length,outSats.length+1)){selUtxos=lo;selTotal=lt;break;}}}if(!selUtxos.length)throw new Error('Insufficient funds across main + change addresses');const fee=estFee(selUtxos.length,outSats.length+1);const change=selTotal-totalOut-fee;if(change<0)throw new Error('Insufficient balance after fee');let changeAddr=cA.addr;if(sel){if(sel.addr===cA.addr)changeAddr=cB.addr;else if(sel.addr===cB.addr)changeAddr=cA.addr;else changeAddr=S.lastChangeOutputAddr===cA.addr?cB.addr:cA.addr;}else{changeAddr=S.lastChangeOutputAddr===cA.addr?cB.addr:cA.addr;}S.lastChangeOutputAddr=changeAddr;const finalOuts=[...outSats];if(change>=DUST)finalOuts.push({addr:changeAddr,sat:change});const rawHex=await buildTx(selUtxos,finalOuts);const res=await fetch(`${MEMPOOL_API}/tx`,{method:'POST',headers:{'Content-Type':'text/plain'},body:rawHex});if(!res.ok)throw new Error(`Broadcast failed: ${await res.text()}`);return(await res.text()).trim();}
+
+function randDelim(){const b=new Uint8Array(1),lim=Math.floor(256/SAFE_DELIMITERS.length)*SAFE_DELIMITERS.length;let v=0;do{crypto.getRandomValues(b);v=b[0];}while(v>=lim);return SAFE_DELIMITERS[v%SAFE_DELIMITERS.length];}
+function randSalt(){const b=new Uint32Array(1);crypto.getRandomValues(b);return-(b[0]%100000);}
+async function signMsg(text){if(!S.priv)throw new Error('Wallet locked');const mh=await msgHash(text);const{r,s,recoveryId}=await ecSign(S.priv,mh);const c=new Uint8Array(65);c[0]=27+4+recoveryId;c.set(bi2b32(r),1);c.set(bi2b32(s),33);return btoa(String.fromCharCode.apply(null,c));}
+async function deriveKeywordAddress(keyword){const tok=norm(keyword).replace(/^#/,'');const b=new TextEncoder().encode(tok);const p=new Uint8Array(21);p[0]=P2FK_VER;p.fill(P2FK_PAD.charCodeAt(0),1);if(b.length)p.set(b.slice(0,P2FK_CHUNK),1);return encB58C(p);}
+async function encP2FK(payload){const b=new TextEncoder().encode(payload);const addrs=[],seen=new Set();for(let i=0;i<b.length;i+=P2FK_CHUNK){const chunk=b.slice(i,i+P2FK_CHUNK);const padded=new Uint8Array(P2FK_CHUNK);padded.fill(P2FK_PAD.charCodeAt(0));padded.set(chunk);const ab=new Uint8Array(1+P2FK_CHUNK);ab[0]=P2FK_VER;ab.set(padded,1);const enc=await encB58C(ab);if(!seen.has(enc)){seen.add(enc);addrs.push(enc);}}return addrs;}
+async function buildSignedOp(type,payloadObj){const delim=randDelim();const json=JSON.stringify(payloadObj);const unsigned=`${type}${delim}${utf8len(json)}${delim}${json}`;const sig=await signMsg((await sha256hex(unsigned)).toUpperCase());const wrapped=`SIG${randDelim()}88${randDelim()}${sig}${unsigned}`;return{json,unsigned,wrapped,encoded:await encP2FK(wrapped)};}
+
+function parseJsonInput(raw,fb){const t=norm(raw);if(!t)return fb;try{return JSON.parse(t);}catch{return fb;}}
+
+// ── Wallet UI ────────────────────────────────────────────────────
+
+async function importWallet(){
+  try{
+    const wif=norm($('wifInput').value),pass=norm($('walletPass').value);
+    if(!wif)throw new Error('Enter WIF');if(pass.length<WALLET_MIN_PASS)throw new Error(`Password must be at least ${WALLET_MIN_PASS} characters`);
+    const priv=await wif2priv(wif);const addr=await priv2addr(priv);const keyring=await buildKeyring(priv);
+    localStorage.setItem(WALLET_KEY,JSON.stringify(await encryptPriv(priv,pass)));
+    S.priv=priv;S.addr=addr;S.keyring=keyring;
+    setWalletSummary();
+    await refreshWalletIdentity();
+    showToast('Wallet unlocked ✓','ok');
+  }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
+}
+async function unlockWallet(){
+  try{
+    const saved=localStorage.getItem(WALLET_KEY);if(!saved)throw new Error('No saved wallet');
+    const pass=norm($('walletPass').value);if(!pass)throw new Error('Enter password');
+    const priv=await decryptPriv(JSON.parse(saved),pass);const addr=await priv2addr(priv);const keyring=await buildKeyring(priv);
+    S.priv=priv;S.addr=addr;S.keyring=keyring;setWalletSummary();
+    await refreshWalletIdentity();
+    showToast('Wallet unlocked ✓','ok');
+  }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
+}
+function lockWallet(){S.priv=null;S.addr='';S.keyring=null;S.walletProfile=null;setWalletSummary();setStatus('walletInfo','Wallet locked.');}
+function forgetWallet(){lockWallet();localStorage.removeItem(WALLET_KEY);setStatus('walletInfo','Saved key removed.');}
+
+// ── OBJ tx ───────────────────────────────────────────────────────
+
+async function sendObjTx(){
+  try{
+    if(!S.priv)throw new Error('Unlock wallet first');
+    const objectAddress=norm($('objAddress').value);if(!objectAddress)throw new Error('Object address is required');
+    const obj={nme:norm($('objName').value),urn:norm($('objUrn').value),img:norm($('objImg').value),uri:norm($('objUri').value),dsc:norm($('objDesc').value)};
+    const creators=parseJsonInput($('objCreators').value,[]);const owners=parseJsonInput($('objOwners').value,{});const royalties=parseJsonInput($('objRoys').value,{});const atr=parseJsonInput($('objAttrs').value,{});
+    if(Array.isArray(creators)&&creators.length)obj.cre=creators;if(Object.keys(owners).length)obj.own=owners;if(Object.keys(royalties).length)obj.roy=royalties;if(Object.keys(atr).length)obj.atr=atr;
+    Object.keys(obj).forEach(k=>{if(obj[k]===''||(typeof obj[k]==='object'&&!Object.keys(obj[k]).length))delete obj[k];});
+    const extra=[objectAddress,S.addr,...(Array.isArray(creators)?creators:[]),...Object.keys(owners||{}),...Object.keys(royalties||{})];
+    if(obj.urn)extra.push(await deriveKeywordAddress(obj.urn));
+    const dustRecipients=uniq(extra);
+    const approved=await requestTxConfirmation({
+      title:'Confirm OBJ',
+      subtitle:'Create / update object metadata',
+      object:{name:obj.nme||'Untitled',img:obj.img,urn:obj.urn||objectAddress,address:objectAddress},
+      lines:[
+        ['Object',objectAddress],
+        ['Creators',String(Array.isArray(creators)?creators.length:0)],
+        ['Owners',String(Object.keys(owners||{}).length)],
+        ['Royalties',String(Object.keys(royalties||{}).length)],
+        ['Dust outputs',String(dustRecipients.length)]
+      ],
+      prompt:'Are you sure you want to broadcast this OBJ metadata transaction?'
+    });
+    if(!approved){setStatus('objStatus','OBJ cancelled.');return null;}
+    const built=await buildSignedOp('OBJ',obj);
+    const recipients=uniq([...built.encoded,...extra]).map(addr=>({addr,amount:DUST/1e8}));
+    setStatus('objStatus',`Broadcasting OBJ (${recipients.length} outputs)…`);
+    const txid=await broadcastTx(recipients);
+    setStatus('objStatus',`OBJ broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
+    showToast('OBJ broadcast ✓','ok');
+    return txid;
+  }catch(e){setStatus('objStatus',String(e.message||e),'err');showToast(String(e.message||e),'err');}
+}
+
+// ── Operations ───────────────────────────────────────────────────
+
+function renderOpHints(){const t=$('opType').value;const map={GIV:'GIV: object transfer outside sale (to recipient).',LST:'LST: list object qty at each-price.',BUY:'BUY: purchase listed qty; royalties are added to outputs.',BRN:'BRN: burn qty from current signer pool.'};setStatus('opHints',map[t]||'');}
+
+async function sendOperationTx(opts={}){
+  try{
+    if(!S.priv)throw new Error('Unlock wallet first');
+    const statusId=opts.statusId||'opStatus';
+    const type=opts.type||$('opType').value;
+    const primary=norm(opts.primary??$('opObject').value);
+    const objectAddress=norm(opts.objectAddress||'');
+    const qty=Math.max(1,Number((opts.qty??$('opQty').value) || 1));
+    const each=Math.max(0,Number((opts.each??$('opEach').value) || 0));
+    if(!primary)throw new Error('Primary address is required');
+    let payload=null,extras=[S.addr],payments=[],confirmPrimary=primary,confirmEach=each;
+    if(type==='GIV'){
+      const to=norm(opts.extraAddress??$('opExtraAddress').value);if(!to)throw new Error('GIV target address required');
+      payload=[[to,String(qty)],['0',String(randSalt())]];extras.push(to,primary);
+    }else if(type==='LST'){
+      payload=[[primary,String(qty),String(each)],['0',String(randSalt())]];extras.push(primary);
+    }else if(type==='BUY'){
+      let buySeller=primary;
+      let buyEach=each;
+      if(objectAddress){
+        setStatus(statusId,'Validating listing state with verbose object lookup…');
+        const fresh=await validateFreshListing(objectAddress,primary,each,qty);
+        buySeller=fresh.listing.seller;
+        buyEach=fresh.listing.each;
+      }
+      if(!buySeller)throw new Error('Seller is required for BUY');
+      const total=qty*buyEach;if(total<=0)throw new Error('BUY requires qty and each > 0');
+      confirmPrimary=buySeller;
+      confirmEach=buyEach;
+      payload=[[buySeller,String(qty)],['0',String(randSalt())]];
+      const roy=parseJsonInput(opts.royaltiesOverride??$('opRoyOverride').value,{});
+      let royaltyTotal=0;
+      for(const[addr,rawRate]of Object.entries(roy||{})){
+        const r=Number(rawRate);
+        if(!addr||!Number.isFinite(r))continue;
+        if(r<=0||r>1)throw new Error('Royalty rates must be > 0 and <= 1');
+        const amt=total*r;
+        if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}
+      }
+      const sellerAmount=total-royaltyTotal;
+      payments.push({addr:buySeller,amount:sellerAmount});
+    }else if(type==='BRN'){
+      payload=[['0',String(qty)],['0',String(randSalt())]];extras.push(primary);
+    }else throw new Error('Unsupported op');
+
+    const objectPreview=norm(objectAddress)?(S.selectedObject&&norm(S.selectedObject.address)===norm(objectAddress)?S.selectedObject:{address:objectAddress,urn:objectAddress,name:opts.objectName||'Selected object'}):(S.selectedObject&&norm(S.selectedObject.address)===norm(primary)?S.selectedObject:{address:primary,urn:primary,name:opts.objectName||'Selected object'});
+    const confirmationLines=[
+      ['Action',type],
+      ['Primary',confirmPrimary],
+      ['Quantity',String(qty)]
+    ];
+    if(type==='GIV')confirmationLines.push(['Recipient',norm(opts.extraAddress??$('opExtraAddress').value)]);
+    if(type==='LST'||type==='BUY')confirmationLines.push(['Each BTC',fmtBtc(confirmEach)]);
+    if(type==='BUY')confirmationLines.push(['Estimated BTC out',fmtBtc(payments.reduce((s,p)=>s+Number(p.amount||0),0))]);
+    if(type==='BRN')confirmationLines.push(['Burn target',primary]);
+    const approved=await requestTxConfirmation({
+      title:`Confirm ${type}`,
+      subtitle:type==='BUY'?'Purchase listing':'Review state-engine action',
+      object:objectPreview,
+      lines:confirmationLines,
+      prompt:`Are you sure you want to broadcast this ${type} transaction?`
+    });
+    if(!approved){setStatus(statusId,`${type} cancelled.`);return null;}
+    const built=await buildSignedOp(type,payload);
+    const dustRecipients=uniq([...built.encoded,...extras]).map(addr=>({addr,amount:DUST/1e8}));
+    const recipients=[...dustRecipients,...payments];
+    setStatus(statusId,`Broadcasting ${type} (${recipients.length} outputs)…`);
+    const txid=await broadcastTx(recipients);
+    setStatus(statusId,`${type} broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
+    showToast(`${type} broadcast ✓`,'ok');
+    return txid;
+  }catch(e){setStatus(opts.statusId||'opStatus',String(e.message||e),'err');showToast(String(e.message||e),'err');}
+}
+
+// ── Profile / search ─────────────────────────────────────────────
+
+function asObj(raw){
+  const parseMaybe=x=>{if(typeof x!=='string')return x;try{return JSON.parse(x);}catch{return x;}};
+  const base=parseMaybe(raw?.OBJ||raw?.obj||raw||{});
+  const o=(base&&typeof base==='object')?base:{};
+  const address=norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.Object||o.object||'');
+  const name=norm(o.Name||o.name||o.nme||'');
+  const urn=norm(o.URN||o.urn||'');
+  const img=norm(o.Image||o.image||o.img||o.Img||o.thumbnail||o.Thumbnail||'');
+  const uri=norm(o.URI||o.uri||'');
+  const description=norm(o.Description||o.description||o.dsc||'');
+  const creatorRaw=parseMaybe(o.Creators||o.cre||o.Creator||o.creator||[]);
+  const creators=Array.isArray(creatorRaw)?creatorRaw.filter(Boolean):Object.keys(creatorRaw||{}).filter(Boolean);
+  const owners=parseMaybe(o.Owners||o.own||o.Owner||o.owner||{});
+  const royalties=parseMaybe(o.Royalties||o.roy||{});
+  const attributes=parseMaybe(o.Attributes||o.attributes||o.atr||{});
+  const listing=o.Listings||o.listings||o.lst||o.Listing||o.listing||null;
+  return{address,name,urn,img,uri,description,creators,owners,royalties,attributes,listing};
+}
+
+function mergeObjectRecords(a,b){
+  const merged={...a,...b};
+  merged.creators=uniq([...(a.creators||[]),...(b.creators||[])]);
+  merged.owners={...(a.owners||{}),...(b.owners||{})};
+  merged.royalties={...(a.royalties||{}),...(b.royalties||{})};
+  merged.attributes={...(a.attributes||{}),...(b.attributes||{})};
+  merged.listing=b.listing||a.listing||null;
+  merged.img=b.img||a.img||'';
+  merged.description=b.description||a.description||'';
+  merged.uri=b.uri||a.uri||'';
+  return merged;
+}
+
+async function withResolvedImages(list){
+  return Promise.all((list||[]).map(async o=>{
+    const img=await resolveObjectImage(o);
+    return img?{...o,img}:o;
+  }));
+}
+
+async function searchObjectsAtProfile(){
+  try{
+    const q=norm($('searchProfile').value);if(!q)throw new Error('Enter profile query');
+    let profile=null;
+    if(q.startsWith('@'))profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q.slice(1))}?mainnet=false`);
+    else if(q.length>=26&&q.length<=40)profile=await fetchJson(`/GetProfileByAddress/${encodeURIComponent(q)}?mainnet=false`);
+    else profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q)}?mainnet=false`);
+    profile=Array.isArray(profile)?profile[0]:profile;
+    const addr=norm(profile?.Address||profile?.address||profile?.Creators?.[0]||profile?.cre?.[0]||'');
+    const urn=norm(profile?.URN||profile?.urn||'');
+    const bio=norm(profile?.Bio||profile?.bio||'');
+    if(!addr)throw new Error('Profile has no usable address');
+
+    $('profileHandle').textContent=urn?`@${urn}`:addr.slice(0,18)+'\u2026';
+    $('profileAddr').textContent=addr||'unknown';
+    $('profileBio').textContent=bio;
+    $('profileBio').style.display=bio?'':'none';
+    setMainMode('profile');
+
+    const[created,owned]=await Promise.all([
+      fetchJson(`/GetObjectsCreatedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[]),
+      fetchJson(`/GetObjectsOwnedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[])
+    ]);
+    const createdList=await withResolvedImages((Array.isArray(created)?created:[]).map(asObj));
+    const ownedList=await withResolvedImages((Array.isArray(owned)?owned:[]).map(asObj));
+    const byAddr=new Map();
+    [...createdList,...ownedList].forEach(r=>{
+      if(!r.address)return;
+      byAddr.set(r.address,byAddr.has(r.address)?mergeObjectRecords(byAddr.get(r.address),r):r);
+    });
+    const allList=[...byAddr.values()];
+
+    S.profile=profile;S.objects=allList;
+    _tabState={created:createdList,owned:ownedList};
+    populateCategoryFilter(allList);
+
+    const totalUnits=allList.reduce((s,o)=>s+ownerUnitsForAddress(o.owners,addr),0);
+    const objectCount=allList.filter(o=>ownerUnitsForAddress(o.owners,addr)>0).length;
+    $('statObjects').textContent=objectCount;
+    $('statUnits').textContent=totalUnits;
+    $('gridTitle').textContent='Objects';
+
+    _activeTab='created';
+    switchTab('created');
+  }catch(e){
+    showToast(String(e.message||e),'err');
+    if(S.mode!=='profile')homeSearch();
+    else renderObjectCards([]);
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+renderOpHints();
+setWalletSummary();
+homeSearch();
+</script>
+</body>
+</html>
