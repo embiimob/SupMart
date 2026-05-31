@@ -385,18 +385,19 @@ function switchTab(tab){
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const looksLikeCid=s=>/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[1-9A-HJ-NP-Za-km-z]{20,})$/.test(norm(s));
 
-function toNumberLike(v){
+function toNumberLike(v,depth=0){
+  if(depth>8)return 0;
   if(typeof v==='number')return Number.isFinite(v)?v:0;
   if(typeof v==='string'){
     const n=Number(v.replace(/,/g,'').trim());
     return Number.isFinite(n)?n:0;
   }
-  if(Array.isArray(v))return v.reduce((s,x)=>s+toNumberLike(x),0);
+  if(Array.isArray(v))return v.reduce((s,x)=>s+toNumberLike(x,depth+1),0);
   if(v&&typeof v==='object'){
     const pref=['qty','quantity','units','amount','amt','value','Value','Quantity','Units','Amount'];
-    for(const k of pref){if(k in v)return toNumberLike(v[k]);}
+    for(const k of pref){if(k in v)return toNumberLike(v[k],depth+1);}
     const vals=Object.values(v);
-    return vals.length===1?toNumberLike(vals[0]):0;
+    return vals.length===1?toNumberLike(vals[0],depth+1):0;
   }
   return 0;
 }
@@ -672,8 +673,8 @@ async function sendOperationTx(opts={}){
     const statusId=opts.statusId||'opStatus';
     const type=opts.type||$('opType').value;
     const primary=norm(opts.primary??$('opObject').value);
-    const qty=Math.max(1,Number(opts.qty??$('opQty').value||1));
-    const each=Math.max(0,Number(opts.each??$('opEach').value||0));
+    const qty=Math.max(1,Number((opts.qty??$('opQty').value) || 1));
+    const each=Math.max(0,Number((opts.each??$('opEach').value) || 0));
     if(!primary)throw new Error('Primary address is required');
     let payload=null,extras=[S.addr],payments=[];
     if(type==='GIV'){
@@ -689,7 +690,7 @@ async function sendOperationTx(opts={}){
       for(const[addr,rawRate]of Object.entries(roy||{})){
         const r=Number(rawRate);
         if(!addr||!isFinite(r))continue;
-        if(r<=0||r>1)throw new Error('Royalty rates must be greater than 0 and at most 1');
+        if(r<=0||r>1)throw new Error('Royalty rates must be > 0 and <= 1');
         const amt=total*r;
         if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}
       }
