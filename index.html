@@ -5,113 +5,274 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SupMart</title>
   <style>
-    :root{--bg:#0b1020;--card:#111a32;--muted:#9fb0de;--text:#edf2ff;--acc:#5eead4;--bad:#fca5a5;--ok:#86efac}
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#070b16,#101833);color:var(--text)}
-    .wrap{max-width:1180px;margin:0 auto;padding:20px} .top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-    .brand{font-size:1.25rem;font-weight:800} .sub{color:var(--muted);font-size:.92rem}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:14px}
-    .card{background:var(--card);border:1px solid #25345f;border-radius:14px;padding:14px}
-    h2,h3{margin:0 0 10px} h2{font-size:1.05rem} h3{font-size:.95rem;color:#c9d7ff}
-    label{display:block;font-size:.82rem;color:var(--muted);margin:8px 0 4px}
-    input,textarea,select,button{font:inherit} input,textarea,select{width:100%;background:#0a1328;color:var(--text);border:1px solid #2f4277;border-radius:10px;padding:8px 10px}
-    textarea{min-height:70px;resize:vertical} button{cursor:pointer;border:0;border-radius:10px;padding:8px 12px;background:#334c8d;color:#fff;font-weight:650}
-    button:hover{filter:brightness(1.08)} button.acc{background:#0f766e} button.warn{background:#7f1d1d}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
-    .status{margin-top:8px;padding:8px 10px;border-radius:10px;border:1px solid #355293;background:#0b1a3d}.status.ok{border-color:#236045;background:#102f1f}.status.err{border-color:#7f1d1d;background:#351515}
-    table{width:100%;border-collapse:collapse;font-size:.86rem} th,td{padding:6px;border-bottom:1px solid #2a3965;text-align:left;vertical-align:top}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#0b244f;font-size:.75rem;margin-right:6px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    :root{
+      --bg:#050505;--surface:#111111;--surface2:#1a1a1a;
+      --border:#222222;--border2:#333333;
+      --text:#ffffff;--muted:#888888;--muted2:#555555;
+      --acc:#00d084;--acc2:#00b872;
+      --bad:#ff4d4f;--ok:#00d084;
+      --r:4px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+    /* ── NAV ── */
+    .nav{position:sticky;top:0;z-index:100;background:rgba(5,5,5,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-inner{max-width:1280px;margin:0 auto;padding:0 20px;height:54px;display:flex;align-items:center;gap:16px}
+    .brand{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;flex-shrink:0;color:var(--text)}
+    .brand em{font-style:normal;color:var(--acc)}
+    .search-wrap{flex:1;max-width:480px}
+    .search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:7px 12px;font:inherit;font-size:13px}
+    .search-wrap input:focus{outline:none;border-color:var(--acc)}
+    .search-wrap input::placeholder{color:var(--muted)}
+    .nav-right{display:flex;gap:8px;margin-left:auto;align-items:center}
+
+    /* ── BUTTONS ── */
+    .btn{cursor:pointer;border:1px solid var(--border2);border-radius:var(--r);padding:7px 14px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;font-weight:600;letter-spacing:.02em;white-space:nowrap;transition:border-color .15s,background .15s}
+    .btn:hover{border-color:#555;background:var(--surface2)}
+    .btn-acc{background:var(--acc);color:#000;border-color:var(--acc)}
+    .btn-acc:hover{background:var(--acc2);border-color:var(--acc2)}
+    .btn-warn{border-color:#5c1a1a;color:var(--bad)}
+    .btn-warn:hover{background:#1a0000;border-color:var(--bad)}
+    #walletBtn{font-family:ui-monospace,monospace;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+    #walletBtn.connected{border-color:var(--acc);color:var(--acc)}
+
+    /* ── MAIN ── */
+    .main{max-width:1280px;margin:0 auto;padding:28px 20px}
+
+    /* ── PROFILE ── */
+    .profile-section{display:none;margin-bottom:28px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:24px}
+    .profile-section.visible{display:flex;gap:20px;align-items:flex-start}
+    .avatar{width:72px;height:72px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)}
+    .pinfo{flex:1;min-width:0}
+    .phandle{font-size:1.25rem;font-weight:700;margin-bottom:3px}
+    .paddr{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);margin-bottom:6px;word-break:break-all}
+    .pbio{color:var(--muted);font-size:13px;margin-bottom:12px}
+    .pstats{display:flex;gap:28px}
+    .pstat-val{font-size:1.1rem;font-weight:700;color:var(--acc)}
+    .pstat-lbl{font-size:11px;color:var(--muted)}
+
+    /* ── TABS ── */
+    .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:20px}
+    .tab{padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);font-size:13px;font-weight:500;margin-bottom:-1px;transition:color .15s,border-color .15s}
+    .tab.active{color:var(--text);border-bottom-color:var(--acc)}
+    .tab:hover{color:var(--text)}
+
+    /* ── SECTION ── */
+    .sec-title{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
+    .empty{padding:64px 0;text-align:center;color:var(--muted2);font-size:14px}
+
+    /* ── CARD GRID ── */
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+    .obj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:border-color .15s,transform .1s}
+    .obj-card:hover{border-color:#444;transform:translateY(-2px)}
+    .obj-thumb{width:100%;aspect-ratio:1/1;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--muted2);overflow:hidden}
+    .obj-thumb img{width:100%;height:100%;object-fit:cover}
+    .obj-body{padding:10px 12px}
+    .obj-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+    .obj-urn{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+    .obj-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+    .obj-qty{font-size:11px;color:var(--muted)}
+    .creator-chip{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}
+
+    /* ── MODALS ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:20px}
+    .overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+    .modal-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+    .modal-hd h2{font-size:15px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+    .modal-hd .sub{font-size:11px;color:var(--muted);font-weight:400}
+    .modal-x{cursor:pointer;background:none;border:none;color:var(--muted);font-size:20px;line-height:1;padding:0;transition:color .15s}
+    .modal-x:hover{color:var(--text)}
+    .modal-bd{padding:20px}
+
+    /* ── FORMS ── */
+    label{display:block;font-size:11px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+    input,textarea,select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font:inherit;font-size:13px;transition:border-color .15s}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--acc)}
+    input::placeholder,textarea::placeholder{color:var(--muted2)}
+    textarea{min-height:60px;resize:vertical}
+    select{cursor:pointer}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+    /* ── STATUS (inside modals) ── */
+    .status{margin-top:10px;padding:8px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-size:12px;color:var(--muted);word-break:break-all}
+    .status.ok{border-color:#1a4d32;background:#0a1f14;color:#86efac}
+    .status.err{border-color:#5c1a1a;background:#1a0000;color:var(--bad)}
+
+    /* ── TOASTS ── */
+    #toastBox{position:fixed;bottom:24px;right:24px;z-index:400;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px}
+    .toast{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:10px 16px;font-size:13px;pointer-events:auto;animation:tIn .2s ease;word-break:break-all}
+    .toast.ok{border-color:#1a4d32;color:#86efac}
+    .toast.err{border-color:#5c1a1a;color:var(--bad)}
+    @keyframes tIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    .mono{font-family:ui-monospace,monospace;word-break:break-all}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);font-size:11px}
+
+    @media(max-width:640px){
+      .nav-inner{gap:8px}
+      .search-wrap{flex:1;max-width:none}
+      .brand{font-size:.9rem}
+      .card-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
+      .profile-section.visible{flex-direction:column}
+      .row2{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div>
-        <div class="brand">SupMart</div>
-        <div class="sub">Single-file testnet3 marketplace (OBJ / GIV / LST / BUY / BRN)</div>
-      </div>
-      <div class="sub mono" id="walletSummary">Wallet: locked</div>
+
+<!-- ════════════════════════════ NAV ════════════════════════════ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">Sup<em>Mart</em></div>
+    <div class="search-wrap">
+      <input id="searchProfile" placeholder="Search @handle or address…"
+             onkeydown="if(event.key==='Enter')searchObjectsAtProfile()" />
     </div>
-
-    <div class="grid">
-      <section class="card">
-        <h2>Built-in Wallet (testnet3)</h2>
-        <div class="sub">Compatible constants: <span class="mono">sup_iw_v1 · sup:testnet3:change: · 2 change keys</span></div>
-        <label>WIF private key (testnet3)</label><input id="wifInput" type="password" placeholder="c... or 9..." />
-        <label>Password (for local encryption, min 12)</label><input id="walletPass" type="password" />
-        <div class="actions">
-          <button class="acc" onclick="importWallet()">Import + unlock</button>
-          <button onclick="unlockWallet()">Unlock saved</button>
-          <button onclick="lockWallet()">Lock</button>
-          <button class="warn" onclick="forgetWallet()">Forget saved key</button>
-        </div>
-        <div id="walletInfo" class="status">No key loaded.</div>
-      </section>
-
-      <section class="card">
-        <h2>Profile / Objects Search</h2>
-        <label>Profile query (@urn or testnet address)</label><input id="searchProfile" placeholder="@handle or m/n..." />
-        <div class="actions"><button onclick="searchObjectsAtProfile()">Search</button></div>
-        <div id="profileCard" class="status">No profile loaded.</div>
-        <div id="reportCard" class="status">No report yet.</div>
-      </section>
+    <div class="nav-right">
+      <button class="btn btn-acc" onclick="openModal('createModal')">Create</button>
+      <button class="btn" onclick="openModal('tradeModal')">Trade</button>
+      <button class="btn" id="walletBtn" onclick="openModal('walletModal')">Connect Wallet</button>
     </div>
-
-    <div class="grid">
-      <section class="card">
-        <h2>OBJ (Create / Edit)</h2>
-        <label>Object address</label><input id="objAddress" placeholder="testnet3 object address" />
-        <div class="row">
-          <div><label>Name</label><input id="objName" /></div>
-          <div><label>URN</label><input id="objUrn" placeholder="IPFS:... or txid/file" /></div>
-        </div>
-        <div class="row">
-          <div><label>Image URL</label><input id="objImg" /></div>
-          <div><label>URI</label><input id="objUri" /></div>
-        </div>
-        <label>Description</label><textarea id="objDesc"></textarea>
-        <div class="row">
-          <div><label>Creators JSON array</label><textarea id="objCreators" placeholder='["creatorAddress"]'></textarea></div>
-          <div><label>Owners JSON map</label><textarea id="objOwners" placeholder='{"ownerAddress":1}'></textarea></div>
-        </div>
-        <div class="row">
-          <div><label>Royalties JSON map</label><textarea id="objRoys" placeholder='{"royaltyAddress":0.05}'></textarea></div>
-          <div><label>Attributes JSON map</label><textarea id="objAttrs" placeholder='{"type":"collectible"}'></textarea></div>
-        </div>
-        <div class="actions"><button onclick="sendObjTx()">Broadcast OBJ</button></div>
-        <div id="objStatus" class="status">Ready.</div>
-      </section>
-
-      <section class="card">
-        <h2>GIV / LST / BUY / BRN</h2>
-        <label>Operation</label>
-        <select id="opType" onchange="renderOpHints()">
-          <option value="GIV">GIV</option>
-          <option value="LST">LST</option>
-          <option value="BUY">BUY</option>
-          <option value="BRN">BRN</option>
-        </select>
-        <label>Primary object address (or seller for BUY)</label><input id="opObject" placeholder="object address or seller address" />
-        <div class="row">
-          <div><label>Qty</label><input id="opQty" type="number" min="1" value="1" /></div>
-          <div><label>Each BTC (used by LST/BUY)</label><input id="opEach" type="number" min="0" step="0.00000001" value="0.00000546" /></div>
-        </div>
-        <label>Extra address (GIV target, optional)</label><input id="opExtraAddress" placeholder="recipient for GIV" />
-        <label>Royalties JSON map for BUY (optional override)</label><textarea id="opRoyOverride" placeholder='{"royaltyAddress":0.05}'></textarea>
-        <div class="actions"><button onclick="sendOperationTx()">Broadcast operation</button></div>
-        <div id="opHints" class="status">GIV: sends object quantity to a target outside a sale.</div>
-        <div id="opStatus" class="status">Ready.</div>
-      </section>
-    </div>
-
-    <section class="card" style="margin-top:14px;">
-      <h2>Objects</h2>
-      <table>
-        <thead><tr><th>Address</th><th>Name/URN</th><th>Creators</th><th>Owners</th><th>Royalties</th></tr></thead>
-        <tbody id="objectsTable"><tr><td colspan="5" class="sub">Search a profile to view objects.</td></tr></tbody>
-      </table>
-    </section>
   </div>
+</nav>
+
+<!-- ════════════════════════════ MAIN ════════════════════════════ -->
+<div class="main">
+
+  <!-- Profile header (revealed after search) -->
+  <div class="profile-section" id="profileSection">
+    <div class="avatar" id="profileAvatar">◎</div>
+    <div class="pinfo">
+      <div class="phandle" id="profileHandle"></div>
+      <div class="paddr mono" id="profileAddr"></div>
+      <div class="pbio" id="profileBio"></div>
+      <div class="pstats">
+        <div>
+          <div class="pstat-val" id="statObjects">0</div>
+          <div class="pstat-lbl">Objects</div>
+        </div>
+        <div>
+          <div class="pstat-val" id="statUnits">0</div>
+          <div class="pstat-lbl">Total Units</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs (visible after search) -->
+  <div id="tabsRow" style="display:none">
+    <div class="tabs">
+      <div class="tab active" id="tabCreated" onclick="switchTab('created')">Created</div>
+      <div class="tab" id="tabOwned" onclick="switchTab('owned')">Owned</div>
+    </div>
+  </div>
+
+  <!-- Object grid -->
+  <div class="sec-title" id="gridTitle">Explore Objects</div>
+  <div class="empty" id="emptyState">Search a profile above to browse objects.</div>
+  <div class="card-grid" id="objectsGrid"></div>
+
+</div>
+
+<!-- ════════════════════════════ MODALS ════════════════════════════ -->
+
+<!-- Wallet -->
+<div class="overlay" id="walletModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Built-in Wallet <span class="sub">testnet3 · sup_iw_v1</span></h2>
+      <button class="modal-x" onclick="closeModal('walletModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <label>WIF private key (testnet3)</label>
+      <input id="wifInput" type="password" placeholder="c… or 9…" />
+      <label>Password <span class="sub">(min 12 chars, for local encryption)</span></label>
+      <input id="walletPass" type="password" />
+      <div class="form-actions">
+        <button class="btn btn-acc" onclick="importWallet()">Import + Unlock</button>
+        <button class="btn" onclick="unlockWallet()">Unlock Saved</button>
+        <button class="btn" onclick="lockWallet()">Lock</button>
+        <button class="btn btn-warn" onclick="forgetWallet()">Forget</button>
+      </div>
+      <div id="walletInfo" class="status">No key loaded.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Create (OBJ) -->
+<div class="overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Create Object <span class="sub">OBJ transaction</span></h2>
+      <button class="modal-x" onclick="closeModal('createModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <label>Object address</label>
+      <input id="objAddress" placeholder="testnet3 object address" />
+      <div class="row2">
+        <div><label>Name</label><input id="objName" /></div>
+        <div><label>URN</label><input id="objUrn" placeholder="IPFS:… or txid/file" /></div>
+      </div>
+      <div class="row2">
+        <div><label>Image URL</label><input id="objImg" /></div>
+        <div><label>URI</label><input id="objUri" /></div>
+      </div>
+      <label>Description</label><textarea id="objDesc"></textarea>
+      <div class="row2">
+        <div><label>Creators JSON array</label><textarea id="objCreators" placeholder='["creatorAddress"]'></textarea></div>
+        <div><label>Owners JSON map</label><textarea id="objOwners" placeholder='{"ownerAddress":1}'></textarea></div>
+      </div>
+      <div class="row2">
+        <div><label>Royalties JSON map</label><textarea id="objRoys" placeholder='{"royaltyAddress":0.05}'></textarea></div>
+        <div><label>Attributes JSON map</label><textarea id="objAttrs" placeholder='{"type":"collectible"}'></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-acc" onclick="sendObjTx()">Broadcast OBJ</button>
+      </div>
+      <div id="objStatus" class="status">Ready.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Trade (GIV / LST / BUY / BRN) -->
+<div class="overlay" id="tradeModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Trade <span class="sub">GIV / LST / BUY / BRN</span></h2>
+      <button class="modal-x" onclick="closeModal('tradeModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <label>Operation</label>
+      <select id="opType" onchange="renderOpHints()">
+        <option value="GIV">GIV — Transfer outside sale</option>
+        <option value="LST">LST — List for sale</option>
+        <option value="BUY">BUY — Purchase listing</option>
+        <option value="BRN">BRN — Burn</option>
+      </select>
+      <label>Primary object address (or seller for BUY)</label>
+      <input id="opObject" placeholder="object address or seller address" />
+      <div class="row2">
+        <div><label>Qty</label><input id="opQty" type="number" min="1" value="1" /></div>
+        <div><label>Each BTC (LST / BUY)</label><input id="opEach" type="number" min="0" step="0.00000001" value="0.00000546" /></div>
+      </div>
+      <label>Extra address (GIV recipient)</label>
+      <input id="opExtraAddress" placeholder="recipient for GIV" />
+      <label>Royalties JSON map for BUY (optional override)</label>
+      <textarea id="opRoyOverride" placeholder='{"royaltyAddress":0.05}'></textarea>
+      <div id="opHints" class="status">GIV: sends object quantity to a target outside a sale.</div>
+      <div class="form-actions">
+        <button class="btn btn-acc" onclick="sendOperationTx()">Broadcast</button>
+      </div>
+      <div id="opStatus" class="status">Ready.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastBox"></div>
 
 <script>
 const B58='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -138,14 +299,82 @@ const norm=(x)=>String(x??'').trim();
 const utf8len=(t)=>new TextEncoder().encode(String(t??'')).length;
 const uniq=(arr)=>Array.from(new Set(arr.filter(Boolean)));
 
-function setStatus(id,msg,type=''){const el=$(id); if(!el) return; el.className=`status ${type}`; el.innerHTML=msg;}
-function setWalletSummary(){ $('walletSummary').textContent=S.priv?`Wallet: ${S.addr}`:'Wallet: locked'; }
+// ── UI helpers ──────────────────────────────────────────────────
+
+function openModal(id){$(id).classList.add('open');}
+function closeModal(id){$(id).classList.remove('open');}
+document.addEventListener('click',e=>{if(e.target.classList.contains('overlay'))e.target.classList.remove('open');});
+
+function showToast(msg,type=''){
+  const box=$('toastBox');
+  const t=document.createElement('div');
+  t.className='toast '+(type||'');
+  t.innerHTML=msg;
+  box.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},4000);
+}
+
+function setStatus(id,msg,type=''){const el=$(id);if(!el)return;el.className='status '+(type||'');el.innerHTML=msg;}
+
+function setWalletSummary(){
+  const btn=$('walletBtn');
+  if(S.priv){btn.textContent=S.addr;btn.classList.add('connected');}
+  else{btn.textContent='Connect Wallet';btn.classList.remove('connected');}
+}
+
+let _tabState={created:[],owned:[]};
+
+function switchTab(tab){
+  $('tabCreated').classList.toggle('active',tab==='created');
+  $('tabOwned').classList.toggle('active',tab==='owned');
+  renderObjectCards(_tabState[tab]||[]);
+}
+
+function renderObjectCards(list){
+  const grid=$('objectsGrid');
+  const empty=$('emptyState');
+  if(!list||!list.length){
+    grid.innerHTML='';
+    empty.style.display='';
+    empty.textContent='No objects found.';
+    return;
+  }
+  empty.style.display='none';
+  grid.innerHTML=list.map(o=>{
+    const qty=Object.values(o.owners||{}).reduce((s,v)=>s+Number(v||0),0);
+    const creator=(o.creators||[])[0]||'';
+    const creatorShort=creator?creator.slice(0,8)+'\u2026'+creator.slice(-4):'';
+    const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const thumb=o.img
+      ?`<img src="${esc(o.img)}" loading="lazy" onerror="this.parentElement.innerHTML='&#9698;'" />`
+      :'&#9698;';
+    const addrEsc=esc(o.address||'');
+    return `<div class="obj-card" onclick="onCardClick('${addrEsc}')">
+      <div class="obj-thumb">${thumb}</div>
+      <div class="obj-body">
+        <div class="obj-name">${esc(o.name)||'Untitled'}</div>
+        <div class="obj-urn">${esc(o.urn||o.address||'')}</div>
+        ${creatorShort?`<div class="creator-chip mono">by ${creatorShort}</div>`:''}
+        <div class="obj-footer">
+          <span class="obj-qty">${qty} unit${qty!==1?'s':''}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onCardClick(addr){
+  $('opObject').value=addr;
+  $('objAddress').value=addr;
+}
+
+// ── Crypto / blockchain (unchanged) ─────────────────────────────
 
 async function fetchJson(path){
   const urls=[`${API_PRIMARY}${path}`,`${API_FALLBACK}${path}`];
   let lastErr='';
   for(const u of urls){
-    try{const r=await fetch(u); if(!r.ok) throw new Error(`${r.status}`); return await r.json();}
+    try{const r=await fetch(u);if(!r.ok)throw new Error(`${r.status}`);return await r.json();}
     catch(e){lastErr=String(e.message||e);}
   }
   throw new Error(`API request failed (${lastErr})`);
@@ -168,7 +397,7 @@ const P=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
 const N=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
 const Gx=0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n;
 const Gy=0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n;
-const sP=n=>((n%P)+P)%P, sN=n=>((n%N)+N)%N;
+const sP=n=>((n%P)+P)%P,sN=n=>((n%N)+N)%N;
 function sInv(a,m){let[r,s,rr,ss]=[m,0n,((a%m)+m)%m,1n];while(rr!==0n){const q=r/rr;[r,s,rr,ss]=[rr,ss,r-q*rr,s-q*ss];}return((s%m)+m)%m;}
 function jDbl(X,Y,Z){if(Y===0n)return[0n,1n,0n];const Y2=sP(Y*Y),S=sP(4n*X*Y2),M=sP(3n*X*X),X2=sP(M*M-2n*S);return[X2,sP(M*(S-X2)-8n*Y2*Y2),sP(2n*Y*Z)];}
 function jAdd(X1,Y1,Z1,X2,Y2,Z2){if(Z1===0n)return[X2,Y2,Z2];if(Z2===0n)return[X1,Y1,Z1];const z1s=sP(Z1*Z1),z2s=sP(Z2*Z2),U1=sP(X1*z2s),U2=sP(X2*z1s),S1=sP(Y1*z2s*Z2),S2=sP(Y2*z1s*Z1),H=sP(U2-U1),R=sP(S2-S1);if(H===0n)return R===0n?jDbl(X1,Y1,Z1):[0n,1n,0n];const Hs=sP(H*H),Hc=sP(H*Hs),X3=sP(R*R-Hc-2n*U1*Hs);return[X3,sP(R*(U1*Hs-X3)-S1*Hc),sP(H*Z1*Z2)];}
@@ -202,126 +431,158 @@ async function buildSignedOp(type,payloadObj){const delim=randDelim();const json
 
 function parseJsonInput(raw,fb){const t=norm(raw);if(!t)return fb;try{return JSON.parse(t);}catch{return fb;}}
 
+// ── Wallet UI ────────────────────────────────────────────────────
+
 async function importWallet(){
   try{
     const wif=norm($('wifInput').value),pass=norm($('walletPass').value);
-    if(!wif)throw new Error('Enter WIF'); if(pass.length<WALLET_MIN_PASS)throw new Error(`Password must be at least ${WALLET_MIN_PASS} characters`);
-    const priv=await wif2priv(wif); const addr=await priv2addr(priv); const keyring=await buildKeyring(priv);
+    if(!wif)throw new Error('Enter WIF');if(pass.length<WALLET_MIN_PASS)throw new Error(`Password must be at least ${WALLET_MIN_PASS} characters`);
+    const priv=await wif2priv(wif);const addr=await priv2addr(priv);const keyring=await buildKeyring(priv);
     localStorage.setItem(WALLET_KEY,JSON.stringify(await encryptPriv(priv,pass)));
     S.priv=priv;S.addr=addr;S.keyring=keyring;
     setWalletSummary();
     setStatus('walletInfo',`Unlocked ✓<br>Main: <span class='mono'>${addr}</span><br>Change-1: <span class='mono'>${keyring.changes[0].addr}</span><br>Change-2: <span class='mono'>${keyring.changes[1].addr}</span>`,'ok');
+    showToast('Wallet unlocked ✓','ok');
   }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
 }
 async function unlockWallet(){
   try{
-    const saved=localStorage.getItem(WALLET_KEY); if(!saved) throw new Error('No saved wallet');
-    const pass=norm($('walletPass').value); if(!pass) throw new Error('Enter password');
-    const priv=await decryptPriv(JSON.parse(saved),pass); const addr=await priv2addr(priv); const keyring=await buildKeyring(priv);
-    S.priv=priv;S.addr=addr;S.keyring=keyring; setWalletSummary();
+    const saved=localStorage.getItem(WALLET_KEY);if(!saved)throw new Error('No saved wallet');
+    const pass=norm($('walletPass').value);if(!pass)throw new Error('Enter password');
+    const priv=await decryptPriv(JSON.parse(saved),pass);const addr=await priv2addr(priv);const keyring=await buildKeyring(priv);
+    S.priv=priv;S.addr=addr;S.keyring=keyring;setWalletSummary();
     setStatus('walletInfo',`Unlocked ✓<br>Main: <span class='mono'>${addr}</span><br>Change-1: <span class='mono'>${keyring.changes[0].addr}</span><br>Change-2: <span class='mono'>${keyring.changes[1].addr}</span>`,'ok');
+    showToast('Wallet unlocked ✓','ok');
   }catch(e){setStatus('walletInfo',String(e.message||e),'err');}
 }
 function lockWallet(){S.priv=null;S.addr='';S.keyring=null;setWalletSummary();setStatus('walletInfo','Wallet locked.');}
 function forgetWallet(){lockWallet();localStorage.removeItem(WALLET_KEY);setStatus('walletInfo','Saved key removed.');}
 
+// ── OBJ tx ───────────────────────────────────────────────────────
+
 async function sendObjTx(){
   try{
-    if(!S.priv) throw new Error('Unlock wallet first');
-    const objectAddress=norm($('objAddress').value); if(!objectAddress) throw new Error('Object address is required');
+    if(!S.priv)throw new Error('Unlock wallet first');
+    const objectAddress=norm($('objAddress').value);if(!objectAddress)throw new Error('Object address is required');
     const obj={nme:norm($('objName').value),urn:norm($('objUrn').value),img:norm($('objImg').value),uri:norm($('objUri').value),dsc:norm($('objDesc').value)};
-    const creators=parseJsonInput($('objCreators').value,[]); const owners=parseJsonInput($('objOwners').value,{}); const royalties=parseJsonInput($('objRoys').value,{}); const atr=parseJsonInput($('objAttrs').value,{});
-    if(Array.isArray(creators)&&creators.length)obj.cre=creators; if(Object.keys(owners).length)obj.own=owners; if(Object.keys(royalties).length)obj.roy=royalties; if(Object.keys(atr).length)obj.atr=atr;
+    const creators=parseJsonInput($('objCreators').value,[]);const owners=parseJsonInput($('objOwners').value,{});const royalties=parseJsonInput($('objRoys').value,{});const atr=parseJsonInput($('objAttrs').value,{});
+    if(Array.isArray(creators)&&creators.length)obj.cre=creators;if(Object.keys(owners).length)obj.own=owners;if(Object.keys(royalties).length)obj.roy=royalties;if(Object.keys(atr).length)obj.atr=atr;
     Object.keys(obj).forEach(k=>{if(obj[k]===''||(typeof obj[k]==='object'&&!Object.keys(obj[k]).length))delete obj[k];});
     const built=await buildSignedOp('OBJ',obj);
     const extra=[objectAddress,S.addr,...(Array.isArray(creators)?creators:[]),...Object.keys(owners||{}),...Object.keys(royalties||{})];
-    if(obj.urn) extra.push(await deriveKeywordAddress(obj.urn));
+    if(obj.urn)extra.push(await deriveKeywordAddress(obj.urn));
     const recipients=uniq([...built.encoded,...extra]).map(addr=>({addr,amount:DUST/1e8}));
-    setStatus('objStatus',`Broadcasting OBJ (${recipients.length} outputs)...`);
+    setStatus('objStatus',`Broadcasting OBJ (${recipients.length} outputs)…`);
     const txid=await broadcastTx(recipients);
     setStatus('objStatus',`OBJ broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
-  }catch(e){setStatus('objStatus',String(e.message||e),'err');}
+    showToast('OBJ broadcast ✓','ok');
+  }catch(e){setStatus('objStatus',String(e.message||e),'err');showToast(String(e.message||e),'err');}
 }
+
+// ── Operations ───────────────────────────────────────────────────
 
 function renderOpHints(){const t=$('opType').value;const map={GIV:'GIV: object transfer outside sale (to recipient).',LST:'LST: list object qty at each-price.',BUY:'BUY: purchase listed qty; royalties are added to outputs.',BRN:'BRN: burn qty from current signer pool.'};setStatus('opHints',map[t]||'');}
 
 async function sendOperationTx(){
   try{
-    if(!S.priv) throw new Error('Unlock wallet first');
-    const type=$('opType').value; const primary=norm($('opObject').value); const qty=Math.max(1,Number($('opQty').value||1)); const each=Math.max(0,Number($('opEach').value||0));
-    if(!primary) throw new Error('Primary address is required');
+    if(!S.priv)throw new Error('Unlock wallet first');
+    const type=$('opType').value;const primary=norm($('opObject').value);const qty=Math.max(1,Number($('opQty').value||1));const each=Math.max(0,Number($('opEach').value||0));
+    if(!primary)throw new Error('Primary address is required');
     let payload=null,extras=[S.addr],payments=[];
     if(type==='GIV'){
-      const to=norm($('opExtraAddress').value); if(!to) throw new Error('GIV target address required');
-      payload=[[to,String(qty)],['0',String(randSalt())]]; extras.push(to,primary);
+      const to=norm($('opExtraAddress').value);if(!to)throw new Error('GIV target address required');
+      payload=[[to,String(qty)],['0',String(randSalt())]];extras.push(to,primary);
     }else if(type==='LST'){
-      payload=[[primary,String(qty),String(each)],['0',String(randSalt())]]; extras.push(primary);
+      payload=[[primary,String(qty),String(each)],['0',String(randSalt())]];extras.push(primary);
     }else if(type==='BUY'){
       payload=[[primary,String(qty)],['0',String(randSalt())]];
-      const total=qty*each; if(total<=0) throw new Error('BUY requires qty and each > 0');
+      const total=qty*each;if(total<=0)throw new Error('BUY requires qty and each > 0');
       const roy=parseJsonInput($('opRoyOverride').value,{});
       let royaltyTotal=0;
-      for(const [addr,rawRate] of Object.entries(roy||{})){
+      for(const[addr,rawRate]of Object.entries(roy||{})){
         const r=Number(rawRate);
-        if(!addr||!isFinite(r)) continue;
-        if(r<=0||r>1) throw new Error('Royalty rates must be greater than 0 and at most 1');
+        if(!addr||!isFinite(r))continue;
+        if(r<=0||r>1)throw new Error('Royalty rates must be greater than 0 and at most 1');
         const amt=total*r;
-        if(amt>0){
-          payments.push({addr,amount:amt});
-          royaltyTotal+=amt;
-        }
+        if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}
       }
       const sellerAmount=total-royaltyTotal;
       payments.push({addr:primary,amount:sellerAmount});
     }else if(type==='BRN'){
-      payload=[['0',String(qty)],['0',String(randSalt())]]; extras.push(primary);
+      payload=[['0',String(qty)],['0',String(randSalt())]];extras.push(primary);
     }else throw new Error('Unsupported op');
 
     const built=await buildSignedOp(type,payload);
     const dustRecipients=uniq([...built.encoded,...extras]).map(addr=>({addr,amount:DUST/1e8}));
     const recipients=[...dustRecipients,...payments];
-    setStatus('opStatus',`Broadcasting ${type} (${recipients.length} outputs)...`);
+    setStatus('opStatus',`Broadcasting ${type} (${recipients.length} outputs)…`);
     const txid=await broadcastTx(recipients);
     setStatus('opStatus',`${type} broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
-  }catch(e){setStatus('opStatus',String(e.message||e),'err');}
+    showToast(`${type} broadcast ✓`,'ok');
+  }catch(e){setStatus('opStatus',String(e.message||e),'err');showToast(String(e.message||e),'err');}
 }
+
+// ── Profile / search ─────────────────────────────────────────────
 
 function asObj(raw){
   const o=raw?.OBJ||raw?.obj||raw||{};
   const address=norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.cre?.[0]||'');
   const name=norm(o.Name||o.name||o.nme||'');
   const urn=norm(o.URN||o.urn||'');
+  const img=norm(o.Image||o.image||o.img||o.Img||'');
   const creators=Array.isArray(o.Creators||o.cre)?(o.Creators||o.cre):Object.keys(o.Creators||{});
   const owners=o.Owners||o.own||{};
   const royalties=o.Royalties||o.roy||{};
-  return{address,name,urn,creators,owners,royalties};
+  return{address,name,urn,img,creators,owners,royalties};
 }
-function renderObjectsTable(list){const tb=$('objectsTable');if(!list.length){tb.innerHTML='<tr><td colspan="5" class="sub">No objects found.</td></tr>';return;}tb.innerHTML=list.map(o=>`<tr><td class="mono">${o.address||'-'}</td><td>${o.name||'-'}<br><span class='sub mono'>${o.urn||''}</span></td><td class='mono'>${(o.creators||[]).join('<br>')||'-'}</td><td class='mono'>${Object.entries(o.owners||{}).map(([k,v])=>`${k}: ${v}`).join('<br>')||'-'}</td><td class='mono'>${Object.entries(o.royalties||{}).map(([k,v])=>`${k}: ${v}`).join('<br>')||'-'}</td></tr>`).join('');}
 
 async function searchObjectsAtProfile(){
   try{
-    const q=norm($('searchProfile').value); if(!q) throw new Error('Enter profile query');
+    const q=norm($('searchProfile').value);if(!q)throw new Error('Enter profile query');
     let profile=null;
-    if(q.startsWith('@')) profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q.slice(1))}?mainnet=false`);
-    else if(q.length>=26&&q.length<=40) profile=await fetchJson(`/GetProfileByAddress/${encodeURIComponent(q)}?mainnet=false`);
+    if(q.startsWith('@'))profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q.slice(1))}?mainnet=false`);
+    else if(q.length>=26&&q.length<=40)profile=await fetchJson(`/GetProfileByAddress/${encodeURIComponent(q)}?mainnet=false`);
     else profile=await fetchJson(`/GetProfileByURN/${encodeURIComponent(q)}?mainnet=false`);
     profile=Array.isArray(profile)?profile[0]:profile;
     const addr=norm(profile?.Address||profile?.address||profile?.Creators?.[0]||profile?.cre?.[0]||'');
     const urn=norm(profile?.URN||profile?.urn||'');
-    $('profileCard').innerHTML=`<span class='pill'>Profile</span>${urn?`@${urn}`:''}<br><span class='mono'>${addr||'unknown'}</span><br>${norm(profile?.Bio||profile?.bio||'')||''}`;
+    const bio=norm(profile?.Bio||profile?.bio||'');
 
-    const [created,owned]=await Promise.all([
+    $('profileHandle').textContent=urn?`@${urn}`:addr.slice(0,18)+'\u2026';
+    $('profileAddr').textContent=addr||'unknown';
+    $('profileBio').textContent=bio;
+    $('profileBio').style.display=bio?'':'none';
+    $('profileSection').classList.add('visible');
+    $('tabsRow').style.display='';
+
+    const[created,owned]=await Promise.all([
       fetchJson(`/GetObjectsCreatedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[]),
       fetchJson(`/GetObjectsOwnedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[])
     ]);
-    const rows=[...(Array.isArray(created)?created:[]),...(Array.isArray(owned)?owned:[])].map(asObj);
-    const byAddr=new Map(); rows.forEach(r=>{if(r.address)byAddr.set(r.address,r);});
-    const list=[...byAddr.values()]; S.profile=profile; S.objects=list; renderObjectsTable(list);
-    const totalOwned=list.reduce((s,o)=>s+Object.values(o.owners||{}).reduce((a,v)=>a+Number(v||0),0),0);
-    $('reportCard').innerHTML=`<span class='pill'>Report</span> Objects: <b>${list.length}</b> · Total units (owner maps): <b>${totalOwned}</b><br><span class='sub'>Sources: p2fl.io / p2fk.io object/profile endpoints</span>`;
-  }catch(e){setStatus('profileCard',String(e.message||e),'err');setStatus('reportCard','No report yet.');renderObjectsTable([]);}
+    const createdList=(Array.isArray(created)?created:[]).map(asObj);
+    const ownedList=(Array.isArray(owned)?owned:[]).map(asObj);
+    const byAddr=new Map();
+    [...createdList,...ownedList].forEach(r=>{if(r.address)byAddr.set(r.address,r);});
+    const allList=[...byAddr.values()];
+
+    S.profile=profile;S.objects=allList;
+    _tabState={created:createdList,owned:ownedList};
+
+    const totalUnits=allList.reduce((s,o)=>s+Object.values(o.owners||{}).reduce((a,v)=>a+Number(v||0),0),0);
+    $('statObjects').textContent=allList.length;
+    $('statUnits').textContent=totalUnits;
+    $('gridTitle').textContent='Objects';
+
+    $('tabCreated').classList.add('active');
+    $('tabOwned').classList.remove('active');
+    switchTab('created');
+  }catch(e){
+    showToast(String(e.message||e),'err');
+    renderObjectCards([]);
+  }
 }
 
+// ── Init ─────────────────────────────────────────────────────────
 renderOpHints();
 setWalletSummary();
 </script>
