@@ -357,6 +357,8 @@ const P2FK_PAD='#';
 const DUST=546;
 const FEE_DEFAULT=10;
 const FEE_MIN=2;
+const PRICE_COMPARISON_EPSILON=1e-12;
+const MIN_DUST_OUTPUTS_FOR_STATE_ENGINE=2;
 
 const WALLET_KEY='sup_iw_v1';
 const WALLET_MIN_PASS=12;
@@ -401,6 +403,7 @@ function setWalletSummary(){
 let _tabState={created:[],owned:[]};
 let _activeTab='created';
 let _visibleObjects=[];
+let _walletProfileReqSeq=0;
 
 function switchTab(tab){
   _activeTab=tab;
@@ -692,7 +695,7 @@ async function validateFreshListing(objectAddress,seller,each,qty){
   if(!listings.length)throw new Error('Listing no longer exists on-chain');
   const picked=seller?listings.find(x=>norm(x.seller)===norm(seller)):listings[0];
   if(!picked)throw new Error('Requested seller is no longer listed');
-  if(each>0&&Math.abs(Number(picked.each)-Number(each))>1e-12){
+  if(each>0&&Math.abs(Number(picked.each)-Number(each))>PRICE_COMPARISON_EPSILON){
     throw new Error(`Listing changed: expected ${each}, now ${picked.each} BTC`);
   }
   const sellerUnits=ownerUnitsForAddress(verboseObj.owners,picked.seller);
@@ -703,7 +706,7 @@ async function validateFreshListing(objectAddress,seller,each,qty){
 function classifyPendingTx(tx){
   const outs=Array.isArray(tx?.vout)?tx.vout:[];
   const dustCount=outs.filter(v=>Number(v?.value)===DUST).length;
-  if(dustCount>=2)return'state-engine-like';
+  if(dustCount>=MIN_DUST_OUTPUTS_FOR_STATE_ENGINE)return'state-engine-like';
   return'other';
 }
 
@@ -763,6 +766,7 @@ async function resolveProfileForAddress(address){
 
 async function refreshWalletIdentity(){
   if(!S.addr){setStatus('walletInfo','No key loaded.');return;}
+  const reqId=++_walletProfileReqSeq;
   const kr=S.keyring;
   const lines=[`Unlocked ✓`,`Main: <span class='mono'>${S.addr}</span>`];
   if(kr){
@@ -771,10 +775,12 @@ async function refreshWalletIdentity(){
   }
   try{
     const profile=await resolveProfileForAddress(S.addr);
+    if(reqId!==_walletProfileReqSeq)return;
     S.walletProfile=profile;
     if(profile?.urn)lines.push(`Profile: @${esc(profile.urn)} ${profile.isAuthentic?'✓ authentic':'⚠ not verified'}`);
     else lines.push('Profile: none found');
   }catch{
+    if(reqId!==_walletProfileReqSeq)return;
     lines.push('Profile: lookup failed');
   }
   setStatus('walletInfo',lines.join('<br>'),'ok');
