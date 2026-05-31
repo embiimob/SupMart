@@ -305,13 +305,16 @@ function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
 document.addEventListener('click',e=>{if(e.target.classList.contains('overlay'))e.target.classList.remove('open');});
 
+const TOAST_DISPLAY_MS=4000;
+const TOAST_FADE_MS=300;
+
 function showToast(msg,type=''){
   const box=$('toastBox');
   const t=document.createElement('div');
   t.className='toast '+(type||'');
   t.innerHTML=msg;
   box.appendChild(t);
-  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},4000);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition=`opacity ${TOAST_FADE_MS}ms`;setTimeout(()=>t.remove(),TOAST_FADE_MS);},TOAST_DISPLAY_MS);
 }
 
 function setStatus(id,msg,type=''){const el=$(id);if(!el)return;el.className='status '+(type||'');el.innerHTML=msg;}
@@ -330,6 +333,8 @@ function switchTab(tab){
   renderObjectCards(_tabState[tab]||[]);
 }
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
 function renderObjectCards(list){
   const grid=$('objectsGrid');
   const empty=$('emptyState');
@@ -344,17 +349,15 @@ function renderObjectCards(list){
     const qty=Object.values(o.owners||{}).reduce((s,v)=>s+Number(v||0),0);
     const creator=(o.creators||[])[0]||'';
     const creatorShort=creator?creator.slice(0,8)+'\u2026'+creator.slice(-4):'';
-    const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const thumb=o.img
       ?`<img src="${esc(o.img)}" loading="lazy" onerror="this.parentElement.innerHTML='&#9698;'" />`
       :'&#9698;';
-    const addrEsc=esc(o.address||'');
-    return `<div class="obj-card" onclick="onCardClick('${addrEsc}')">
+    return `<div class="obj-card" data-address="${esc(o.address||'')}">
       <div class="obj-thumb">${thumb}</div>
       <div class="obj-body">
         <div class="obj-name">${esc(o.name)||'Untitled'}</div>
         <div class="obj-urn">${esc(o.urn||o.address||'')}</div>
-        ${creatorShort?`<div class="creator-chip mono">by ${creatorShort}</div>`:''}
+        ${creatorShort?`<div class="creator-chip mono">by ${esc(creatorShort)}</div>`:''}
         <div class="obj-footer">
           <span class="obj-qty">${qty} unit${qty!==1?'s':''}</span>
         </div>
@@ -363,10 +366,14 @@ function renderObjectCards(list){
   }).join('');
 }
 
-function onCardClick(addr){
+// Event delegation: handle card clicks without inline handlers
+$('objectsGrid').addEventListener('click',e=>{
+  const card=e.target.closest('.obj-card');
+  if(!card)return;
+  const addr=card.dataset.address||'';
   $('opObject').value=addr;
   $('objAddress').value=addr;
-}
+});
 
 // ── Crypto / blockchain (unchanged) ─────────────────────────────
 
