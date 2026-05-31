@@ -85,6 +85,13 @@
     .modal-x{cursor:pointer;background:none;border:none;color:var(--muted);font-size:20px;line-height:1;padding:0;transition:color .15s}
     .modal-x:hover{color:var(--text)}
     .modal-bd{padding:20px}
+    .detail-wrap{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:16px}
+    .detail-media{width:100%;aspect-ratio:1/1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--muted2)}
+    .detail-media img{width:100%;height:100%;object-fit:cover}
+    .detail-meta{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .detail-title{font-size:17px;font-weight:700;word-break:break-word}
+    .detail-row{font-size:12px;color:var(--muted);word-break:break-all}
+    .detail-actions{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 
     /* ── FORMS ── */
     label{display:block;font-size:11px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.05em}
@@ -118,6 +125,7 @@
       .card-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
       .profile-section.visible{flex-direction:column}
       .row2{grid-template-columns:1fr}
+      .detail-wrap{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -271,6 +279,46 @@
   </div>
 </div>
 
+<!-- Object details -->
+<div class="overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Object Details <span class="sub" id="detailAddressSub"></span></h2>
+      <button class="modal-x" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="detail-wrap">
+        <div class="detail-media" id="detailMedia">◢</div>
+        <div class="detail-meta">
+          <div class="detail-title" id="detailName">Untitled</div>
+          <div class="detail-row">URN: <span class="mono" id="detailUrn">—</span></div>
+          <div class="detail-row">Creator: <span class="mono" id="detailCreator">—</span></div>
+          <div class="detail-row">Units: <span id="detailUnits">0</span></div>
+          <div class="detail-row" id="detailListingRow" style="display:none">Listing: <span id="detailListingText"></span></div>
+          <div class="detail-row" id="detailDesc">—</div>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <label>Qty</label>
+        <input id="detailQty" type="number" min="1" value="1" />
+        <label>Each BTC (for list/buy)</label>
+        <input id="detailEach" type="number" min="0" step="0.00000001" value="0.00000546" />
+        <label>Recipient (for give)</label>
+        <input id="detailRecipient" placeholder="testnet3 recipient" />
+        <label>Seller (for buy)</label>
+        <input id="detailSeller" placeholder="seller address" />
+        <div class="form-actions">
+          <button class="btn" onclick="executeDetailTrade('GIV')">Give</button>
+          <button class="btn" onclick="executeDetailTrade('LST')">List</button>
+          <button class="btn btn-acc" onclick="executeDetailTrade('BUY')">Buy</button>
+        </div>
+        <div id="detailStatus" class="status">Select an action to prepare and broadcast from this object.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div id="toastBox"></div>
 
@@ -292,8 +340,9 @@ const WALLET_PBKDF2=600000;
 const CHANGE_COUNT=2;
 const CHANGE_PREFIX='sup:testnet3:change:';
 const SAFE_DELIMITERS=['\\','/',':','*','?','"','<','>','|'];
+const IPFS_GATEWAYS=['https://nftstorage.link/ipfs/','https://ipfs.io/ipfs/'];
 
-const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[]};
+const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[],selectedObject:null};
 const $=(id)=>document.getElementById(id);
 const norm=(x)=>String(x??'').trim();
 const utf8len=(t)=>new TextEncoder().encode(String(t??'')).length;
@@ -334,6 +383,85 @@ function switchTab(tab){
 }
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const looksLikeCid=s=>/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[1-9A-HJ-NP-Za-km-z]{20,})$/.test(norm(s));
+
+function toNumberLike(v){
+  if(typeof v==='number')return Number.isFinite(v)?v:0;
+  if(typeof v==='string'){
+    const n=Number(v.replace(/,/g,'').trim());
+    return Number.isFinite(n)?n:0;
+  }
+  if(Array.isArray(v))return v.reduce((s,x)=>s+toNumberLike(x),0);
+  if(v&&typeof v==='object'){
+    const pref=['qty','quantity','units','amount','amt','value','Value','Quantity','Units','Amount'];
+    for(const k of pref){if(k in v)return toNumberLike(v[k]);}
+    const vals=Object.values(v);
+    return vals.length===1?toNumberLike(vals[0]):0;
+  }
+  return 0;
+}
+
+function sumOwnerUnits(owners){
+  if(Array.isArray(owners))return owners.reduce((s,o)=>s+toNumberLike(o),0);
+  if(owners&&typeof owners==='object')return Object.values(owners).reduce((s,v)=>s+toNumberLike(v),0);
+  return toNumberLike(owners);
+}
+
+function normalizeIpfsRef(raw){
+  const t=norm(raw);
+  if(!t)return '';
+  if(/^https?:\/\//i.test(t))return t;
+  if(/^ipfs:\/\//i.test(t))return `${IPFS_GATEWAYS[0]}${t.replace(/^ipfs:\/\//i,'').replace(/^ipfs\//i,'')}`;
+  if(/^ipfs:/i.test(t))return `${IPFS_GATEWAYS[0]}${t.replace(/^ipfs:/i,'').replace(/^\/+/,'')}`;
+  if(/^\/?ipfs\//i.test(t))return `${IPFS_GATEWAYS[0]}${t.replace(/^\/?ipfs\//i,'')}`;
+  return looksLikeCid(t)?`${IPFS_GATEWAYS[0]}${t}`:'';
+}
+
+async function fetchJsonFromAny(url){
+  const base=normalizeIpfsRef(url)||norm(url);
+  if(!base)return null;
+  const candidates=base.startsWith('https://')&&base.includes('/ipfs/')
+    ?[base,...IPFS_GATEWAYS.map(g=>`${g}${base.split('/ipfs/')[1]}`)]
+    :[base];
+  for(const u of uniq(candidates)){
+    try{
+      const r=await fetch(u);
+      if(!r.ok)continue;
+      return await r.json();
+    }catch{}
+  }
+  return null;
+}
+
+function detectListing(obj){
+  const listingSrc=obj.listings||obj.listing||obj.lst||obj.Listings||obj.Listing||null;
+  if(!listingSrc)return null;
+  const entries=Array.isArray(listingSrc)?listingSrc:(typeof listingSrc==='object'?Object.values(listingSrc):[]);
+  for(const e of entries){
+    if(!e||typeof e!=='object')continue;
+    const seller=norm(e.seller||e.address||e.owner||e.Owner||'');
+    const each=toNumberLike(e.each??e.price??e.Price??e.amount);
+    if(each>0)return{seller,each};
+  }
+  return null;
+}
+
+async function resolveObjectImage(obj){
+  const direct=[obj.img,obj.image,obj.thumbnail,obj.icon,obj.preview];
+  for(const c of direct){
+    const u=normalizeIpfsRef(c)||norm(c);
+    if(u)return u;
+  }
+  for(const metaRef of [obj.uri,obj.urn]){
+    const meta=await fetchJsonFromAny(metaRef);
+    if(!meta||typeof meta!=='object')continue;
+    for(const k of ['image','displayUri','artifactUri','thumbnailUri','image_url','imageUrl']){
+      const u=normalizeIpfsRef(meta[k])||norm(meta[k]);
+      if(u)return u;
+    }
+  }
+  return normalizeIpfsRef(obj.urn)||'';
+}
 
 function renderObjectCards(list){
   const grid=$('objectsGrid');
@@ -346,7 +474,7 @@ function renderObjectCards(list){
   }
   empty.style.display='none';
   grid.innerHTML=list.map(o=>{
-    const qty=Object.values(o.owners||{}).reduce((s,v)=>s+Number(v||0),0);
+    const qty=sumOwnerUnits(o.owners);
     const creator=(o.creators||[])[0]||'';
     const creatorShort=creator?creator.slice(0,8)+'\u2026'+creator.slice(-4):'';
     const thumb=o.img
@@ -366,13 +494,61 @@ function renderObjectCards(list){
   }).join('');
 }
 
-// Event delegation: handle card clicks without inline handlers
+function openObjectDetail(o){
+  S.selectedObject=o||null;
+  if(!o)return;
+  $('detailAddressSub').textContent=norm(o.address).slice(0,20)+(o.address?.length>20?'…':'');
+  $('detailName').textContent=o.name||'Untitled';
+  $('detailUrn').textContent=o.urn||o.address||'—';
+  $('detailCreator').textContent=(o.creators||[]).join(', ')||'—';
+  $('detailUnits').textContent=sumOwnerUnits(o.owners);
+  $('detailDesc').textContent=o.description||'';
+  $('detailDesc').style.display=o.description?'':'none';
+  const listing=detectListing(o);
+  $('detailListingRow').style.display=listing?'':'none';
+  if(listing)$('detailListingText').textContent=`${listing.each} BTC${listing.seller?` by ${listing.seller}`:''}`;
+  $('detailEach').value=listing?.each||0.00000546;
+  $('detailSeller').value=listing?.seller||Object.keys(o.owners||{})[0]||'';
+  $('detailRecipient').value='';
+  $('detailQty').value=1;
+  $('detailStatus').className='status';
+  $('detailStatus').textContent='Select an action to prepare and broadcast from this object.';
+  $('detailMedia').innerHTML=o.img?`<img src="${esc(o.img)}" loading="lazy" onerror="this.parentElement.innerHTML='&#9698;'" />`:'◢';
+  $('opObject').value=o.address||'';
+  $('objAddress').value=o.address||'';
+  openModal('detailModal');
+}
+
+async function executeDetailTrade(type){
+  try{
+    if(!S.selectedObject)throw new Error('Select an object first');
+    const qty=Math.max(1,Number($('detailQty').value||1));
+    const each=Math.max(0,Number($('detailEach').value||0));
+    const recipient=norm($('detailRecipient').value);
+    const seller=norm($('detailSeller').value);
+    const primary=type==='BUY'?seller:norm(S.selectedObject.address);
+    if(!primary)throw new Error(type==='BUY'?'Seller is required for BUY':'Object address is required');
+    await sendOperationTx({
+      type,
+      primary,
+      qty,
+      each,
+      extraAddress:recipient,
+      royaltiesOverride:type==='BUY'?JSON.stringify(S.selectedObject.royalties||{}):'',
+      statusId:'detailStatus'
+    });
+  }catch(e){
+    setStatus('detailStatus',String(e.message||e),'err');
+  }
+}
+
+// Event delegation: open detail panel from card clicks
 $('objectsGrid').addEventListener('click',e=>{
   const card=e.target.closest('.obj-card');
   if(!card)return;
   const addr=card.dataset.address||'';
-  $('opObject').value=addr;
-  $('objAddress').value=addr;
+  const found=S.objects.find(x=>x.address===addr)||null;
+  if(found)openObjectDetail(found);
 });
 
 // ── Crypto / blockchain (unchanged) ─────────────────────────────
@@ -490,21 +666,25 @@ async function sendObjTx(){
 
 function renderOpHints(){const t=$('opType').value;const map={GIV:'GIV: object transfer outside sale (to recipient).',LST:'LST: list object qty at each-price.',BUY:'BUY: purchase listed qty; royalties are added to outputs.',BRN:'BRN: burn qty from current signer pool.'};setStatus('opHints',map[t]||'');}
 
-async function sendOperationTx(){
+async function sendOperationTx(opts={}){
   try{
     if(!S.priv)throw new Error('Unlock wallet first');
-    const type=$('opType').value;const primary=norm($('opObject').value);const qty=Math.max(1,Number($('opQty').value||1));const each=Math.max(0,Number($('opEach').value||0));
+    const statusId=opts.statusId||'opStatus';
+    const type=opts.type||$('opType').value;
+    const primary=norm(opts.primary??$('opObject').value);
+    const qty=Math.max(1,Number(opts.qty??$('opQty').value||1));
+    const each=Math.max(0,Number(opts.each??$('opEach').value||0));
     if(!primary)throw new Error('Primary address is required');
     let payload=null,extras=[S.addr],payments=[];
     if(type==='GIV'){
-      const to=norm($('opExtraAddress').value);if(!to)throw new Error('GIV target address required');
+      const to=norm(opts.extraAddress??$('opExtraAddress').value);if(!to)throw new Error('GIV target address required');
       payload=[[to,String(qty)],['0',String(randSalt())]];extras.push(to,primary);
     }else if(type==='LST'){
       payload=[[primary,String(qty),String(each)],['0',String(randSalt())]];extras.push(primary);
     }else if(type==='BUY'){
       payload=[[primary,String(qty)],['0',String(randSalt())]];
       const total=qty*each;if(total<=0)throw new Error('BUY requires qty and each > 0');
-      const roy=parseJsonInput($('opRoyOverride').value,{});
+      const roy=parseJsonInput(opts.royaltiesOverride??$('opRoyOverride').value,{});
       let royaltyTotal=0;
       for(const[addr,rawRate]of Object.entries(roy||{})){
         const r=Number(rawRate);
@@ -522,25 +702,50 @@ async function sendOperationTx(){
     const built=await buildSignedOp(type,payload);
     const dustRecipients=uniq([...built.encoded,...extras]).map(addr=>({addr,amount:DUST/1e8}));
     const recipients=[...dustRecipients,...payments];
-    setStatus('opStatus',`Broadcasting ${type} (${recipients.length} outputs)…`);
+    setStatus(statusId,`Broadcasting ${type} (${recipients.length} outputs)…`);
     const txid=await broadcastTx(recipients);
-    setStatus('opStatus',`${type} broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
+    setStatus(statusId,`${type} broadcast ✓ txid: <span class='mono'>${txid}</span><br>Payload: <span class='mono'>${built.json.replace(/</g,'&lt;')}</span>`,'ok');
     showToast(`${type} broadcast ✓`,'ok');
-  }catch(e){setStatus('opStatus',String(e.message||e),'err');showToast(String(e.message||e),'err');}
+  }catch(e){setStatus(opts.statusId||'opStatus',String(e.message||e),'err');showToast(String(e.message||e),'err');}
 }
 
 // ── Profile / search ─────────────────────────────────────────────
 
 function asObj(raw){
-  const o=raw?.OBJ||raw?.obj||raw||{};
-  const address=norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.cre?.[0]||'');
+  const parseMaybe=x=>{if(typeof x!=='string')return x;try{return JSON.parse(x);}catch{return x;}};
+  const base=parseMaybe(raw?.OBJ||raw?.obj||raw||{});
+  const o=(base&&typeof base==='object')?base:{};
+  const address=norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.Object||o.object||'');
   const name=norm(o.Name||o.name||o.nme||'');
   const urn=norm(o.URN||o.urn||'');
-  const img=norm(o.Image||o.image||o.img||o.Img||'');
-  const creators=Array.isArray(o.Creators||o.cre)?(o.Creators||o.cre):Object.keys(o.Creators||{});
-  const owners=o.Owners||o.own||{};
-  const royalties=o.Royalties||o.roy||{};
-  return{address,name,urn,img,creators,owners,royalties};
+  const img=norm(o.Image||o.image||o.img||o.Img||o.thumbnail||o.Thumbnail||'');
+  const uri=norm(o.URI||o.uri||'');
+  const description=norm(o.Description||o.description||o.dsc||'');
+  const creatorRaw=parseMaybe(o.Creators||o.cre||o.Creator||o.creator||[]);
+  const creators=Array.isArray(creatorRaw)?creatorRaw.filter(Boolean):Object.keys(creatorRaw||{}).filter(Boolean);
+  const owners=parseMaybe(o.Owners||o.own||o.Owner||o.owner||{});
+  const royalties=parseMaybe(o.Royalties||o.roy||{});
+  const listing=o.Listings||o.listings||o.lst||o.Listing||o.listing||null;
+  return{address,name,urn,img,uri,description,creators,owners,royalties,listing};
+}
+
+function mergeObjectRecords(a,b){
+  const merged={...a,...b};
+  merged.creators=uniq([...(a.creators||[]),...(b.creators||[])]);
+  merged.owners={...(a.owners||{}),...(b.owners||{})};
+  merged.royalties={...(a.royalties||{}),...(b.royalties||{})};
+  merged.listing=b.listing||a.listing||null;
+  merged.img=b.img||a.img||'';
+  merged.description=b.description||a.description||'';
+  merged.uri=b.uri||a.uri||'';
+  return merged;
+}
+
+async function withResolvedImages(list){
+  return Promise.all((list||[]).map(async o=>{
+    const img=await resolveObjectImage(o);
+    return img?{...o,img}:o;
+  }));
 }
 
 async function searchObjectsAtProfile(){
@@ -566,16 +771,19 @@ async function searchObjectsAtProfile(){
       fetchJson(`/GetObjectsCreatedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[]),
       fetchJson(`/GetObjectsOwnedByAddress/${encodeURIComponent(addr)}?mainnet=false&skip=0&qty=250`).catch(()=>[])
     ]);
-    const createdList=(Array.isArray(created)?created:[]).map(asObj);
-    const ownedList=(Array.isArray(owned)?owned:[]).map(asObj);
+    const createdList=await withResolvedImages((Array.isArray(created)?created:[]).map(asObj));
+    const ownedList=await withResolvedImages((Array.isArray(owned)?owned:[]).map(asObj));
     const byAddr=new Map();
-    [...createdList,...ownedList].forEach(r=>{if(r.address)byAddr.set(r.address,r);});
+    [...createdList,...ownedList].forEach(r=>{
+      if(!r.address)return;
+      byAddr.set(r.address,byAddr.has(r.address)?mergeObjectRecords(byAddr.get(r.address),r):r);
+    });
     const allList=[...byAddr.values()];
 
     S.profile=profile;S.objects=allList;
     _tabState={created:createdList,owned:ownedList};
 
-    const totalUnits=allList.reduce((s,o)=>s+Object.values(o.owners||{}).reduce((a,v)=>a+Number(v||0),0),0);
+    const totalUnits=allList.reduce((s,o)=>s+sumOwnerUnits(o.owners),0);
     $('statObjects').textContent=allList.length;
     $('statUnits').textContent=totalUnits;
     $('gridTitle').textContent='Objects';
