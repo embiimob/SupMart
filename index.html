@@ -357,7 +357,7 @@ const P2FK_PAD='#';
 const DUST=546;
 const FEE_DEFAULT=10;
 const FEE_MIN=2;
-const PRICE_COMPARISON_EPSILON=1e-12;
+const PRICE_COMPARISON_EPSILON=1e-8;
 const MIN_DUST_OUTPUTS_FOR_STATE_ENGINE=2;
 
 const WALLET_KEY='sup_iw_v1';
@@ -933,7 +933,7 @@ async function sendOperationTx(opts={}){
       let royaltyTotal=0;
       for(const[addr,rawRate]of Object.entries(roy||{})){
         const r=Number(rawRate);
-        if(!addr||!isFinite(r))continue;
+        if(!addr||!Number.isFinite(r))continue;
         if(r<=0||r>1)throw new Error('Royalty rates must be > 0 and <= 1');
         const amt=total*r;
         if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}
