@@ -3,7 +3,7 @@
 Single-file decentralized marketplace for testnet3 object operations.
 
 ## Run locally
-Open `/tmp/workspace/embiimob/SupMart/index.html` in a browser.
+Open `index.html` in a browser.
 
 The app uses:
 - `p2fl.io` (with `p2fk.io` fallback) for profile/object lookup

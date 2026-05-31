@@ -130,7 +130,7 @@ const WALLET_MIN_PASS=12;
 const WALLET_PBKDF2=600000;
 const CHANGE_COUNT=2;
 const CHANGE_PREFIX='sup:testnet3:change:';
-const DELIMITERS=['\\','/',':','*','?','"','<','>','|'];
+const SAFE_DELIMITERS=['\\','/',':','*','?','"','<','>','|'];
 
 const S={priv:null,addr:'',keyring:null,lastChangeOutputAddr:'',profile:null,objects:[]};
 const $=(id)=>document.getElementById(id);
@@ -193,7 +193,7 @@ function serializeTx(inputs,outputs,sigIdx=-1,sigScript=null){const u32=v=>[v&0x
 async function buildTx(utxos,outputs){const inputs=utxos.map(u=>({txid:u.txid,vout:u.vout,signer:u.signer,scriptSig:new Uint8Array([])}));const finalOuts=await Promise.all(outputs.map(async o=>({sat:o.sat,script:await addrPayout(o.addr)})));for(let i=0;i<inputs.length;i++){const sg=inputs[i].signer;const pre=new Uint8Array([...serializeTx(inputs,finalOuts,i,sg.script),1,0,0,0]);const sh=await sha256(await sha256(pre));const{r,s}=await ecSign(sg.pb,sh);const der=derEnc(r,s);inputs[i].scriptSig=new Uint8Array([der.length+1,...der,0x01,sg.pub.length,...sg.pub]);}return b2h(serializeTx(inputs,finalOuts));}
 async function broadcastTx(outputs){if(!S.priv)throw new Error('Wallet is locked');const kr=S.keyring||await buildKeyring(S.priv);if(!S.keyring)S.keyring=kr;const[cA,cB]=kr.changes;const utxoGroups=await Promise.all(kr.all.map(async sg=>{const r=await fetch(`${MEMPOOL_API}/address/${encodeURIComponent(sg.addr)}/utxo`);if(!r.ok)throw new Error(`UTXO fetch failed for ${sg.label}`);const j=await r.json();return j.filter(u=>u.status?.confirmed).map(u=>({...u,srcAddr:sg.addr,signer:sg}));}));const allUtxos=utxoGroups.flat();if(!allUtxos.length)throw new Error('No confirmed UTXOs found');let feeRate=FEE_DEFAULT;try{const fr=await fetch(`${MEMPOOL_API}/v1/fees/recommended`);const fp=await fr.json();feeRate=Math.max(Number(fp?.halfHourFee||FEE_DEFAULT),FEE_MIN);}catch{}const estFee=(ic,oc)=>Math.ceil((10+148*ic+34*oc)*feeRate);const outSats=outputs.map(o=>({addr:o.addr,sat:Math.round(o.amount*1e8)}));const totalOut=outSats.reduce((s,o)=>s+o.sat,0);const totByAddr=kr.all.reduce((m,sg)=>m.set(sg.addr,0),new Map());allUtxos.forEach(u=>totByAddr.set(u.srcAddr,(totByAddr.get(u.srcAddr)||0)+Number(u.value||0)));const candidates=[kr.main,cA,cB].sort((a,b)=>(totByAddr.get(b.addr)||0)-(totByAddr.get(a.addr)||0));let sel=null,selUtxos=[],selTotal=0;for(const src of candidates){const pool=allUtxos.filter(u=>u.srcAddr===src.addr).sort((a,b)=>b.value-a.value);let lo=[],lt=0;for(const u of pool){lo.push(u);lt+=u.value;if(lt>=totalOut+estFee(lo.length,outSats.length+1)){sel=src;selUtxos=lo;selTotal=lt;break;}}if(selUtxos.length)break;}if(!selUtxos.length){const mixPool=[...allUtxos].sort((a,b)=>b.value-a.value);let lo=[],lt=0;for(const u of mixPool){lo.push(u);lt+=u.value;if(lt>=totalOut+estFee(lo.length,outSats.length+1)){selUtxos=lo;selTotal=lt;break;}}}if(!selUtxos.length)throw new Error('Insufficient funds across main + change addresses');const fee=estFee(selUtxos.length,outSats.length+1);const change=selTotal-totalOut-fee;if(change<0)throw new Error('Insufficient balance after fee');let changeAddr=cA.addr;if(sel){if(sel.addr===cA.addr)changeAddr=cB.addr;else if(sel.addr===cB.addr)changeAddr=cA.addr;else changeAddr=S.lastChangeOutputAddr===cA.addr?cB.addr:cA.addr;}else{changeAddr=S.lastChangeOutputAddr===cA.addr?cB.addr:cA.addr;}S.lastChangeOutputAddr=changeAddr;const finalOuts=[...outSats];if(change>=DUST)finalOuts.push({addr:changeAddr,sat:change});const rawHex=await buildTx(selUtxos,finalOuts);const res=await fetch(`${MEMPOOL_API}/tx`,{method:'POST',headers:{'Content-Type':'text/plain'},body:rawHex});if(!res.ok)throw new Error(`Broadcast failed: ${await res.text()}`);return(await res.text()).trim();}
 
-function randDelim(){const b=new Uint8Array(1),lim=Math.floor(256/DELIMITERS.length)*DELIMITERS.length;let v=0;do{crypto.getRandomValues(b);v=b[0];}while(v>=lim);return DELIMITERS[v%DELIMITERS.length];}
+function randDelim(){const b=new Uint8Array(1),lim=Math.floor(256/SAFE_DELIMITERS.length)*SAFE_DELIMITERS.length;let v=0;do{crypto.getRandomValues(b);v=b[0];}while(v>=lim);return SAFE_DELIMITERS[v%SAFE_DELIMITERS.length];}
 function randSalt(){const b=new Uint32Array(1);crypto.getRandomValues(b);return-(b[0]%100000);}
 async function signMsg(text){if(!S.priv)throw new Error('Wallet locked');const mh=await msgHash(text);const{r,s,recoveryId}=await ecSign(S.priv,mh);const c=new Uint8Array(65);c[0]=27+4+recoveryId;c.set(bi2b32(r),1);c.set(bi2b32(s),33);return btoa(String.fromCharCode.apply(null,c));}
 async function deriveKeywordAddress(keyword){const tok=norm(keyword).replace(/^#/,'');const b=new TextEncoder().encode(tok);const p=new Uint8Array(21);p[0]=P2FK_VER;p.fill(P2FK_PAD.charCodeAt(0),1);if(b.length)p.set(b.slice(0,P2FK_CHUNK),1);return encB58C(p);}
@@ -205,7 +205,7 @@ function parseJsonInput(raw,fb){const t=norm(raw);if(!t)return fb;try{return JSO
 async function importWallet(){
   try{
     const wif=norm($('wifInput').value),pass=norm($('walletPass').value);
-    if(!wif)throw new Error('Enter WIF'); if(pass.length<WALLET_MIN_PASS)throw new Error(`Password must be at least ${WALLET_MIN_PASS}`);
+    if(!wif)throw new Error('Enter WIF'); if(pass.length<WALLET_MIN_PASS)throw new Error(`Password must be at least ${WALLET_MIN_PASS} characters`);
     const priv=await wif2priv(wif); const addr=await priv2addr(priv); const keyring=await buildKeyring(priv);
     localStorage.setItem(WALLET_KEY,JSON.stringify(await encryptPriv(priv,pass)));
     S.priv=priv;S.addr=addr;S.keyring=keyring;
@@ -230,11 +230,11 @@ async function sendObjTx(){
     if(!S.priv) throw new Error('Unlock wallet first');
     const objectAddress=norm($('objAddress').value); if(!objectAddress) throw new Error('Object address is required');
     const obj={nme:norm($('objName').value),urn:norm($('objUrn').value),img:norm($('objImg').value),uri:norm($('objUri').value),dsc:norm($('objDesc').value)};
-    const creators=parseJsonInput($('objCreators').value,[]); const owners=parseJsonInput($('objOwners').value,{}); const roys=parseJsonInput($('objRoys').value,{}); const atr=parseJsonInput($('objAttrs').value,{});
-    if(Array.isArray(creators)&&creators.length)obj.cre=creators; if(Object.keys(owners).length)obj.own=owners; if(Object.keys(roys).length)obj.roy=roys; if(Object.keys(atr).length)obj.atr=atr;
+    const creators=parseJsonInput($('objCreators').value,[]); const owners=parseJsonInput($('objOwners').value,{}); const royalties=parseJsonInput($('objRoys').value,{}); const atr=parseJsonInput($('objAttrs').value,{});
+    if(Array.isArray(creators)&&creators.length)obj.cre=creators; if(Object.keys(owners).length)obj.own=owners; if(Object.keys(royalties).length)obj.roy=royalties; if(Object.keys(atr).length)obj.atr=atr;
     Object.keys(obj).forEach(k=>{if(obj[k]===''||(typeof obj[k]==='object'&&!Object.keys(obj[k]).length))delete obj[k];});
     const built=await buildSignedOp('OBJ',obj);
-    const extra=[objectAddress,S.addr,...(Array.isArray(creators)?creators:[]),...Object.keys(owners||{}),...Object.keys(roys||{})];
+    const extra=[objectAddress,S.addr,...(Array.isArray(creators)?creators:[]),...Object.keys(owners||{}),...Object.keys(royalties||{})];
     if(obj.urn) extra.push(await deriveKeywordAddress(obj.urn));
     const recipients=uniq([...built.encoded,...extra]).map(addr=>({addr,amount:DUST/1e8}));
     setStatus('objStatus',`Broadcasting OBJ (${recipients.length} outputs)...`);
@@ -261,10 +261,20 @@ async function sendOperationTx(){
       const total=qty*each; if(total<=0) throw new Error('BUY requires qty and each > 0');
       const roy=parseJsonInput($('opRoyOverride').value,{});
       let royaltyTotal=0;
-      for(const [addr,rawRate] of Object.entries(roy||{})){const r=Number(rawRate);if(!addr||!isFinite(r)||r<=0)continue;const rate=r<=1?r:r/100;const amt=Math.max(0,total*rate);if(amt>0){payments.push({addr,amount:amt});royaltyTotal+=amt;}}
-      const sellerAmount=Math.max(0,total-royaltyTotal); payments.push({addr:primary,amount:sellerAmount});
+      for(const [addr,rawRate] of Object.entries(roy||{})){
+        const r=Number(rawRate);
+        if(!addr||!isFinite(r)) continue;
+        if(r<=0||r>1) throw new Error('Royalty rates must be greater than 0 and at most 1');
+        const amt=total*r;
+        if(amt>0){
+          payments.push({addr,amount:amt});
+          royaltyTotal+=amt;
+        }
+      }
+      const sellerAmount=total-royaltyTotal;
+      payments.push({addr:primary,amount:sellerAmount});
     }else if(type==='BRN'){
-      payload=[[0,String(qty)],[0,String(randSalt())]]; extras.push(primary);
+      payload=[['0',String(qty)],['0',String(randSalt())]]; extras.push(primary);
     }else throw new Error('Unsupported op');
 
     const built=await buildSignedOp(type,payload);
@@ -276,7 +286,16 @@ async function sendOperationTx(){
   }catch(e){setStatus('opStatus',String(e.message||e),'err');}
 }
 
-function asObj(raw){const o=raw?.OBJ||raw?.obj||raw||{};return{address:norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.cre?.[0]||''),name:norm(o.Name||o.name||o.nme||''),urn:norm(o.URN||o.urn||''),creators:Array.isArray(o.Creators||o.cre)?(o.Creators||o.cre):Object.keys(o.Creators||{}),owners:o.Owners||o.own||{},royalties:o.Royalties||o.roy||{}};}
+function asObj(raw){
+  const o=raw?.OBJ||raw?.obj||raw||{};
+  const address=norm(o.Address||o.address||o.ObjectAddress||o.objectAddress||o.cre?.[0]||'');
+  const name=norm(o.Name||o.name||o.nme||'');
+  const urn=norm(o.URN||o.urn||'');
+  const creators=Array.isArray(o.Creators||o.cre)?(o.Creators||o.cre):Object.keys(o.Creators||{});
+  const owners=o.Owners||o.own||{};
+  const royalties=o.Royalties||o.roy||{};
+  return{address,name,urn,creators,owners,royalties};
+}
 function renderObjectsTable(list){const tb=$('objectsTable');if(!list.length){tb.innerHTML='<tr><td colspan="5" class="sub">No objects found.</td></tr>';return;}tb.innerHTML=list.map(o=>`<tr><td class="mono">${o.address||'-'}</td><td>${o.name||'-'}<br><span class='sub mono'>${o.urn||''}</span></td><td class='mono'>${(o.creators||[]).join('<br>')||'-'}</td><td class='mono'>${Object.entries(o.owners||{}).map(([k,v])=>`${k}: ${v}`).join('<br>')||'-'}</td><td class='mono'>${Object.entries(o.royalties||{}).map(([k,v])=>`${k}: ${v}`).join('<br>')||'-'}</td></tr>`).join('');}
 
 async function searchObjectsAtProfile(){
